@@ -123,7 +123,7 @@ def live_fetch(token, secret, symbol, start, end, interval="5m"):
     Reuses the strategy module's fetch + oscillator so it matches the backtest exactly."""
     import pyotp
     from growwapi import GrowwAPI
-    import intraday_bnf_options as strat
+    import intra as strat
     g = GrowwAPI(GrowwAPI.get_access_token(api_key=token, totp=pyotp.TOTP(secret).now()))
     df = strat._g_candles(g, symbol, g.SEGMENT_CASH, start, end, interval)
     if df.empty:
