@@ -1,7 +1,14 @@
 import json
+import os
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+try:                      # auto-load a local .env so GROWW_TOTP_TOKEN / GROWW_TOTP_SECRET are picked up
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 
 # ---------- pure helpers (importable / testable, no Streamlit) ----------
@@ -153,9 +160,17 @@ def main():
                    "MFE/MAE, skips, oscillator, pivots. Use a SHORT date range (it fetches 1-min + "
                    "option data, so it is slow). Best run locally \u2014 your keys go into the app.")
         from datetime import date, timedelta
+        env_tok = os.environ.get("GROWW_TOTP_TOKEN")
+        env_sec = os.environ.get("GROWW_TOTP_SECRET")
         with st.sidebar:
-            tok = st.text_input("Groww TOTP token", type="password")
-            sec = st.text_input("Groww TOTP secret", type="password")
+            if env_tok and env_sec:
+                st.success("Using Groww keys from the environment.")
+                tok, sec = env_tok, env_sec
+            else:
+                tok = st.text_input("Groww TOTP token", type="password")
+                sec = st.text_input("Groww TOTP secret", type="password")
+                st.caption("Tip: set GROWW_TOTP_TOKEN and GROWW_TOTP_SECRET (e.g. in a local .env) "
+                           "to skip typing these.")
             c1, c2 = st.columns(2)
             start = c1.date_input("Start", value=date.today() - timedelta(days=4))
             end = c2.date_input("End", value=date.today())
