@@ -1,18 +1,4 @@
-"""
-Bank Nifty strategy dashboard (online, no DB, no Groww login).
-
-Reads a `bundle.json` produced by intraday_bnf_options.py (RUN_MODE="realbt" writes it),
-and shows: candlestick + Rainbow oscillator, pivots, entry/exit markers with the full
-"why" reason, a trades table with MFE/MAE, the skip log, and summary stats.
-
-Run locally:        streamlit run app.py
-Deploy online:      push app.py + requirements.txt to a public GitHub repo, then
-                    https://share.streamlit.io -> New app -> pick the repo -> Deploy.
-Then just upload your bundle.json in the sidebar.
-"""
-
 import json
-from datetime import time as dtime
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -102,41 +88,6 @@ def build_day_figure(cdf, trades, day, show_pivots=True, setups=None):
     return fig
 
 
-def detect_setups(cdf_day):
-    """Candidate 5-min setup candles (colour + oscillator sign) for live mode.
-    Approximate: ignores the 1-min trigger and the yesterday-level bounce band."""
-    out = []
-    for _, r in cdf_day.iterrows():
-        t = r["dt"].time()
-        if t < dtime(9, 40) or (dtime(11, 0) <= t <= dtime(12, 30)):
-            continue
-        green = r["Close"] > r["Open"]; red = r["Close"] < r["Open"]
-        if green and r["osc"] > 0:
-            out.append((r["dt"], r["High"], "CE"))
-        elif red and r["osc"] < 0:
-            out.append((r["dt"], r["Low"], "PE"))
-    return out
-
-
-def live_fetch(token, secret, symbol, start, end, interval="5m"):
-    """Log into Groww with the entered keys, fetch index candles, compute the oscillator.
-    Reuses the strategy module's fetch + oscillator so it matches the backtest exactly."""
-    import pyotp
-    from growwapi import GrowwAPI
-    import intra as strat
-    g = GrowwAPI(GrowwAPI.get_access_token(api_key=token, totp=pyotp.TOTP(secret).now()))
-    df = strat._g_candles(g, symbol, g.SEGMENT_CASH, start, end, interval)
-    if df.empty:
-        return df
-    df = df.copy()
-    df["osc"] = strat.widner_oscillator(df["Close"])
-    df = df.reset_index().rename(columns={df.reset_index().columns[0]: "dt"})
-    df["dt"] = pd.to_datetime(df["dt"])
-    df["date"] = df["dt"].dt.date.astype(str)
-    df["color"] = df["osc"].apply(lambda x: "#26a69a" if x > 0 else ("#ef5350" if x < 0 else "#9e9e9e"))
-    return df
-
-
 def trade_rows(trades, day=None):
     rows = []
     for t in trades:
@@ -165,66 +116,78 @@ def stats(trades):
 
 # ---------- Streamlit UI ----------
 
+def build_g(token, secret):
+    import pyotp
+    from growwapi import GrowwAPI
+    return GrowwAPI(GrowwAPI.get_access_token(api_key=token, totp=pyotp.TOTP(secret).now()))
+
+
 def main():
     import streamlit as st
     st.set_page_config(page_title="Bank Nifty Strategy Dashboard", layout="wide")
-    st.title("Bank Nifty — Strategy Dashboard")
+    st.title("Bank Nifty \u2014 Strategy Dashboard")
 
     with st.sidebar:
         st.header("Data source")
-        src = st.radio("", ["Upload bundle", "Live (Groww login)"], label_visibility="collapsed")
+        src = st.radio("", ["Live (Groww login)", "Upload bundle"], label_visibility="collapsed")
         show_pivots = st.checkbox("Show pivot lines", value=True)
 
     b = None
-    live = False
 
     if src == "Upload bundle":
-        st.caption("Reads bundle.json from the backtest. No database, no Groww login.")
+        st.caption("Reads bundle.json written by the backtest. No login.")
         up = st.sidebar.file_uploader("Upload bundle.json", type=["json"])
-        pasted = st.sidebar.text_area("…or paste bundle JSON", height=100)
+        pasted = st.sidebar.text_area("\u2026or paste bundle JSON", height=100)
         raw = up.read() if up is not None else (pasted if pasted.strip() else None)
         if raw is None:
-            st.info("Upload the `bundle.json` your backtest wrote (RUN_MODE='realbt'), or paste it.")
+            st.info("Upload the bundle.json your backtest wrote, or paste it.")
             return
         try:
             b = load_bundle(raw)
         except Exception as e:
-            st.error(f"Could not read bundle: {e}"); return
+            st.error(f"Could not read bundle: {e}")
+            return
 
-    else:  # Live (Groww login)
-        live = True
-        st.caption("Logs into Groww with the keys you enter (kept only for this session) and "
-                   "fetches index candles. Shows candles + oscillator + pivots + candidate setups. "
-                   "Full trades/MFE/skips still come from a backtest bundle. Safest run locally.")
+    else:  # Live (Groww login) -- runs the FULL strategy live
+        st.caption("Logs into Groww and runs the full strategy live: trades, entries/exits, "
+                   "MFE/MAE, skips, oscillator, pivots. Use a SHORT date range (it fetches 1-min + "
+                   "option data, so it is slow). Best run locally \u2014 your keys go into the app.")
+        from datetime import date, timedelta
         with st.sidebar:
             tok = st.text_input("Groww TOTP token", type="password")
             sec = st.text_input("Groww TOTP secret", type="password")
-            symbol = st.text_input("Index symbol", value="NSE-BANKNIFTY")
             c1, c2 = st.columns(2)
-            start = c1.text_input("Start", value="2026-05-01")
-            end = c2.text_input("End", value="2026-05-07")
-            go_btn = st.button("Connect & fetch")
-        if go_btn:
+            start = c1.date_input("Start", value=date.today() - timedelta(days=4))
+            end = c2.date_input("End", value=date.today())
+            run_btn = st.button("Run live backtest")
+        if run_btn:
             if not tok or not sec:
-                st.error("Enter both the TOTP token and secret."); return
-            with st.spinner("Logging into Groww and fetching candles…"):
+                st.error("Enter both the TOTP token and secret.")
+                return
+            try:
+                import intraday_bnf_options as strat
+            except ImportError as e:
+                st.error("Live mode needs **intraday_bnf_options.py next to app.py** (the strategy "
+                         f"engine), plus growwapi + pyotp. Missing: {e}")
+                return
+            with st.spinner("Logging in and running the strategy live (can take a minute)\u2026"):
                 try:
-                    df = live_fetch(tok, sec, symbol, start, end, "5m")
+                    g = build_g(tok, sec)
+                    strat.backtest_real_groww(str(start), str(end), g=g)
+                    st.session_state["live_bundle"] = strat.bundle_dict()
                 except Exception as e:
-                    st.error(f"Groww fetch failed: {e}\n\nIf this is a geo/IP block from a cloud host, "
-                             f"run the dashboard locally instead."); return
-            if df is None or df.empty:
-                st.warning("No candles returned (check symbol/dates)."); return
-            st.session_state["live_df"] = df
-        df = st.session_state.get("live_df")
-        if df is None:
-            st.info("Enter your keys and a date range, then **Connect & fetch**.")
+                    st.error(f"Live run failed: {e}\n\nIf this is a geo/IP block from a cloud host, "
+                             "run the dashboard locally.")
+                    return
+        bundle = st.session_state.get("live_bundle")
+        if bundle is None:
+            st.info("Enter your keys and a date range, then **Run live backtest**.")
             return
-        b = {"meta": {"underlying": symbol, "lot_size": "-", "strike_mode": "live"},
-             "candles": df, "trades": [], "skips": []}
+        b = load_bundle(bundle)
 
+    # ---- unified rendering (same for live and bundle) ----
     m = b["meta"]
-    st.write(f"**{m.get('underlying')}**  ·  lot {m.get('lot_size')}  ·  mode `{m.get('strike_mode')}`")
+    st.write(f"**{m.get('underlying')}**  \u00b7  lot {m.get('lot_size')}  \u00b7  mode `{m.get('strike_mode')}`")
 
     s = stats(b["trades"])
     if s:
@@ -236,44 +199,30 @@ def main():
     days = sorted(set(t["date"] for t in b["trades"]) |
                   (set(cdf["date"].unique()) if not cdf.empty else set()))
     if not days:
-        st.warning("No dates found."); return
+        st.warning("No dates found.")
+        return
     day = st.selectbox("Day", days, index=len(days) - 1)
 
     tab1, tab2, tab3, tab4 = st.tabs(["Chart", "Trades", "Skips", "Raw candles"])
-
     with tab1:
         if cdf.empty:
             st.warning("No candle data.")
         else:
-            setups = detect_setups(cdf[cdf["date"] == day]) if live else None
-            st.plotly_chart(build_day_figure(cdf, b["trades"], day, show_pivots, setups),
+            st.plotly_chart(build_day_figure(cdf, b["trades"], day, show_pivots),
                             use_container_width=True)
-            if live:
-                st.caption("◇ diamonds = candidate setups (5-min colour + oscillator only; the "
-                           "1-min trigger and yesterday-level bounce band aren't applied here).")
-
     with tab2:
-        if live:
-            st.info("Live mode shows data + oscillator + candidate setups. For executed trades "
-                    "with entries, exits, MFE/MAE and P&L, load a backtest bundle.")
-        else:
-            st.subheader(f"Trades on {day}")
-            st.dataframe(trade_rows(b["trades"], day), use_container_width=True)
-            for t in [t for t in b["trades"] if t["date"] == day]:
-                with st.expander(f"{t['opt']} {t['strike']:.0f} — net {t.get('pnl',0):.0f}"):
-                    st.write(t.get("reason", ""))
-                    st.table(pd.DataFrame(t.get("legs", [])))
-            st.divider(); st.subheader("All trades")
-            st.dataframe(trade_rows(b["trades"]), use_container_width=True)
-
+        st.subheader(f"Trades on {day}")
+        st.dataframe(trade_rows(b["trades"], day), use_container_width=True)
+        for t in [t for t in b["trades"] if t["date"] == day]:
+            with st.expander(f"{t['opt']} {t['strike']:.0f} \u2014 net {t.get('pnl',0):.0f}"):
+                st.write(t.get("reason", ""))
+                st.table(pd.DataFrame(t.get("legs", [])))
+        st.divider(); st.subheader("All trades")
+        st.dataframe(trade_rows(b["trades"]), use_container_width=True)
     with tab3:
-        if live:
-            st.info("Skip log comes from a backtest bundle (run with DEBUG_SKIPS=1).")
-        else:
-            sk = [x for x in b["skips"] if day in x]
-            st.subheader(f"Skipped setups on {day}  ({len(sk)})")
-            st.code("\n".join(sk) if sk else "none recorded for this day")
-
+        sk = [x for x in b["skips"] if day in x]
+        st.subheader(f"Skipped setups on {day}  ({len(sk)})")
+        st.code("\n".join(sk) if sk else "none recorded for this day")
     with tab4:
         if not cdf.empty:
             dd = cdf[cdf["date"] == day][["dt", "Open", "High", "Low", "Close", "osc"]]
