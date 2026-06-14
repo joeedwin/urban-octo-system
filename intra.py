@@ -55,6 +55,7 @@ print("[boot] strategy file loaded", flush=True)   # if you never see this, the 
 # Groww TOTP flow (your "API key" = TOTP token, plus the TOTP secret):
 GROWW_TOTP_TOKEN  = "eyJraWQiOiJaTUtjVXciLCJhbGciOiJFUzI1NiJ9.eyJleHAiOjI1Njk3NjYzNDYsImlhdCI6MTc4MTM2NjM0NiwibmJmIjoxNzgxMzY2MzQ2LCJzdWIiOiJ7XCJ0b2tlblJlZklkXCI6XCI5MTVjNjliZS02NTliLTQ3NzQtYjliOC0xMmNmOTZlNWY4YjlcIixcInZlbmRvckludGVncmF0aW9uS2V5XCI6XCJlMzFmZjIzYjA4NmI0MDZjODg3NGIyZjZkODQ5NTMxM1wiLFwidXNlckFjY291bnRJZFwiOlwiMTg2NTEzZDMtNmY4ZC00NWJiLThkOGItMjA2YTZhODc5NDk5XCIsXCJkZXZpY2VJZFwiOlwiMTI4Y2YxYzMtMTY5OS01OWRjLTk2MDItYjhmNWE1YmIzM2UwXCIsXCJzZXNzaW9uSWRcIjpcIjU1NTM2Y2RhLThhNGUtNDU5OC04NzQxLWEyOTEwYjkyYWUxMlwiLFwiYWRkaXRpb25hbERhdGFcIjpcIno1NC9NZzltdjE2WXdmb0gvS0EwYkVSTlY3TE1vUHE1Nk9MeU8rdFZnU2xSTkczdTlLa2pWZDNoWjU1ZStNZERhWXBOVi9UOUxIRmtQejFFQisybTdRPT1cIixcInJvbGVcIjpcImF1dGgtdG90cFwiLFwic291cmNlSXBBZGRyZXNzXCI6XCI0OS4zNy4yMTguMjQ0LDEzNi4yMjYuMjQzLjE2LDE2Mi4xNTguNTUuMTAyLDM1LjI0MS4yMy4xMjNcIixcInR3b0ZhRXhwaXJ5VHNcIjoyNTY5NzY2MzQ2MzkyLFwidmVuZG9yTmFtZVwiOlwiZ3Jvd3dBcGlcIn0iLCJpc3MiOiJhcGV4LWF1dGgtcHJvZC1hcHAifQ.TH5gyWFl7VyBRNfpKghdFGUfST5hfyx0EEw1-wkf54aOAsRsSyQky6AsJCB61OI5uFY7wFNIYfTFhy-dHUI-3Q"     # <-- paste your TOTP token here
 GROWW_TOTP_SECRET = "RYZOPWY4BVDYTKTQPN2T6DZMO27Y2IXM"     # <-- paste your TOTP secret here
+
 GROWW_API_TOKEN   = ""     # OR a single daily access token instead of the two above
 
 # Zerodha (only if LIVE_BROKER = "zerodha"):
@@ -895,12 +896,13 @@ def _find_trigger(day1, setup_ts, setup_hi, setup_lo, side, first):
     return None, None
 
 
-def backtest_real_groww(start, end, cost=None):
+def backtest_real_groww(start, end, cost=None, g=None):
     """Real-data backtest matching the YCloseBounce stored procedures
     (5-min setup + 1-min trigger bounce near yesterday's / today's level),
-    with the live bot's premium-based sizing and exits. Reads only; never trades."""
+    with the live bot's premium-based sizing and exits. Reads only; never trades.
+    Pass an authenticated `g` (GrowwAPI) to reuse an existing login (e.g. from the dashboard)."""
     print("[backtest] logging in to Groww...", flush=True)
-    _SKIPS.clear(); g = _groww_login(); cost = cost or OptCost()
+    _SKIPS.clear(); g = g or _groww_login(); cost = cost or OptCost()
     print(f"[backtest] fetching {UNDERLYING} 5-min index {start} -> {end} ...", flush=True)
     idx5 = _g_candles(g, INDEX_GROWW_SYMBOL, g.SEGMENT_CASH, start, end, "5m")
     if idx5.empty:
@@ -1102,9 +1104,8 @@ def _trade_to_dict(t):
                       "detail": l[6] if len(l) > 6 else ""} for l in t.legs]}
 
 
-def export_bundle(path="bundle.json"):
-    """Write a self-contained JSON the Streamlit dashboard reads (candles + trades + skips)."""
-    import json
+def bundle_dict():
+    """Return the dashboard bundle (candles + trades + skips) for the last backtest run."""
     c = LAST_RUN.get("candles")
     candles = []
     if c is not None and len(c):
@@ -1114,12 +1115,18 @@ def export_bundle(path="bundle.json"):
             candles.append({"dt": str(r[tcol]), "Open": float(r["Open"]), "High": float(r["High"]),
                             "Low": float(r["Low"]), "Close": float(r["Close"]),
                             "osc": float(r.get("osc", 0.0))})
-    bundle = {"underlying": UNDERLYING, "lot_size": LOT_SIZE, "strike_mode": STRIKE_MODE,
-              "trades": [_trade_to_dict(t) for t in LAST_RUN.get("trades", [])],
-              "skips": LAST_RUN.get("skips", []), "candles": candles}
+    return {"underlying": UNDERLYING, "lot_size": LOT_SIZE, "strike_mode": STRIKE_MODE,
+            "trades": [_trade_to_dict(t) for t in LAST_RUN.get("trades", [])],
+            "skips": LAST_RUN.get("skips", []), "candles": candles}
+
+
+def export_bundle(path="bundle.json"):
+    """Write a self-contained JSON the Streamlit dashboard reads (candles + trades + skips)."""
+    import json
+    bundle = bundle_dict()
     with open(path, "w") as f:
         json.dump(bundle, f)
-    print(f"[export] wrote {path}: {len(bundle['trades'])} trades, {len(candles)} candles, "
+    print(f"[export] wrote {path}: {len(bundle['trades'])} trades, {len(bundle['candles'])} candles, "
           f"{len(bundle['skips'])} skips. Download this file and upload it to the dashboard.", flush=True)
     return path
 
