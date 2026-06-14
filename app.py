@@ -30,7 +30,9 @@ def load_bundle(raw):
         cdf["date"] = cdf["dt"].dt.date.astype(str)
         cdf["color"] = cdf["osc"].apply(lambda x: "#26a69a" if x > 0 else ("#ef5350" if x < 0 else "#9e9e9e"))
     return {"meta": {k: raw.get(k) for k in ("underlying", "lot_size", "strike_mode")},
-            "candles": cdf, "trades": raw.get("trades", []), "skips": raw.get("skips", [])}
+            "candles": cdf, "trades": raw.get("trades", []), "skips": raw.get("skips", []),
+            "open_position": raw.get("open_position"), "realized_pnl": raw.get("realized_pnl"),
+            "updated": raw.get("updated")}
 
 
 def day_pivots(cdf, day):
@@ -136,10 +138,12 @@ def main():
 
     with st.sidebar:
         st.header("Data source")
-        src = st.radio("", ["Live (Groww login)", "Upload bundle"], label_visibility="collapsed")
+        src = st.radio("Data source", ["Live (Groww login)", "Live paper", "Upload bundle"],
+                       label_visibility="collapsed")
         show_pivots = st.checkbox("Show pivot lines", value=True)
 
     b = None
+    auto_refresh = False
 
     if src == "Upload bundle":
         st.caption("Reads bundle.json written by the backtest. No login.")
@@ -153,6 +157,33 @@ def main():
             b = load_bundle(raw)
         except Exception as e:
             st.error(f"Could not read bundle: {e}")
+            return
+
+    elif src == "Live paper":
+        st.caption("Watches the paper_bundle.json your live-paper runner writes (RUN_MODE='live'). "
+                   "Same machine: give the file path and turn on auto-refresh. Remote: upload the file.")
+        pmode = st.sidebar.radio("Paper source", ["File path", "Upload"], horizontal=True)
+        raw = None
+        if pmode == "File path":
+            path = st.sidebar.text_input("paper_bundle.json path", value="paper_bundle.json")
+            auto_refresh = st.sidebar.checkbox("Auto-refresh (30s)", value=True)
+            try:
+                with open(path) as f:
+                    raw = f.read()
+            except Exception as e:
+                st.warning(f"Can't read {path}: {e}\n\nStart the runner with RUN_MODE='live' so it "
+                           "writes this file, and point to it (same machine).")
+                return
+        else:
+            up = st.sidebar.file_uploader("Upload paper_bundle.json", type=["json"])
+            raw = up.read() if up is not None else None
+            if raw is None:
+                st.info("Upload the paper_bundle.json your runner is writing.")
+                return
+        try:
+            b = load_bundle(raw)
+        except Exception as e:
+            st.error(f"Could not read paper bundle: {e}")
             return
 
     else:  # Live (Groww login) -- runs the FULL strategy live
@@ -204,6 +235,19 @@ def main():
     m = b["meta"]
     st.write(f"**{m.get('underlying')}**  \u00b7  lot {m.get('lot_size')}  \u00b7  mode `{m.get('strike_mode')}`")
 
+    if b.get("open_position") is not None or b.get("realized_pnl") is not None:   # live-paper status
+        pos = b.get("open_position")
+        c1, c2, c3 = st.columns(3)
+        if pos:
+            c1.metric("Open position", f"{pos['opt']} {pos['strike']:.0f}",
+                      f"{pos['lots']} lot(s)")
+            c2.metric("Stop / T1", f"{pos.get('stop_prem','?')}", f"T1 {pos.get('t1','?')}")
+        else:
+            c1.metric("Open position", "Flat")
+        c3.metric("Realized P&L", f"{b.get('realized_pnl', 0):,.0f}")
+        if b.get("updated"):
+            st.caption(f"Last updated: {b['updated']}")
+
     s = stats(b["trades"])
     if s:
         cols = st.columns(len(s))
@@ -244,6 +288,11 @@ def main():
             st.dataframe(dd, use_container_width=True)
             st.download_button("Download this day (CSV)", dd.to_csv(index=False),
                                file_name=f"banknifty_{day}.csv", mime="text/csv")
+
+    if auto_refresh:                       # live-paper: re-read the file every 30s
+        import time as _t
+        _t.sleep(30)
+        st.rerun()
 
 
 if __name__ == "__main__":
