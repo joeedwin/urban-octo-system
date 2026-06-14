@@ -53,10 +53,8 @@ print("[boot] strategy file loaded", flush=True)   # if you never see this, the 
 # ==========================================
 
 # Groww TOTP flow (your "API key" = TOTP token, plus the TOTP secret):
-GROWW_TOTP_TOKEN  = "eyJraWQiOiJaTUtjVXciLCJhbGciOiJFUzI1NiJ9.eyJleHAiOjI1Njk3NjYzNDYsImlhdCI6MTc4MTM2NjM0NiwibmJmIjoxNzgxMzY2MzQ2LCJzdWIiOiJ7XCJ0b2tlblJlZklkXCI6XCI5MTVjNjliZS02NTliLTQ3NzQtYjliOC0xMmNmOTZlNWY4YjlcIixcInZlbmRvckludGVncmF0aW9uS2V5XCI6XCJlMzFmZjIzYjA4NmI0MDZjODg3NGIyZjZkODQ5NTMxM1wiLFwidXNlckFjY291bnRJZFwiOlwiMTg2NTEzZDMtNmY4ZC00NWJiLThkOGItMjA2YTZhODc5NDk5XCIsXCJkZXZpY2VJZFwiOlwiMTI4Y2YxYzMtMTY5OS01OWRjLTk2MDItYjhmNWE1YmIzM2UwXCIsXCJzZXNzaW9uSWRcIjpcIjU1NTM2Y2RhLThhNGUtNDU5OC04NzQxLWEyOTEwYjkyYWUxMlwiLFwiYWRkaXRpb25hbERhdGFcIjpcIno1NC9NZzltdjE2WXdmb0gvS0EwYkVSTlY3TE1vUHE1Nk9MeU8rdFZnU2xSTkczdTlLa2pWZDNoWjU1ZStNZERhWXBOVi9UOUxIRmtQejFFQisybTdRPT1cIixcInJvbGVcIjpcImF1dGgtdG90cFwiLFwic291cmNlSXBBZGRyZXNzXCI6XCI0OS4zNy4yMTguMjQ0LDEzNi4yMjYuMjQzLjE2LDE2Mi4xNTguNTUuMTAyLDM1LjI0MS4yMy4xMjNcIixcInR3b0ZhRXhwaXJ5VHNcIjoyNTY5NzY2MzQ2MzkyLFwidmVuZG9yTmFtZVwiOlwiZ3Jvd3dBcGlcIn0iLCJpc3MiOiJhcGV4LWF1dGgtcHJvZC1hcHAifQ.TH5gyWFl7VyBRNfpKghdFGUfST5hfyx0EEw1-wkf54aOAsRsSyQky6AsJCB61OI5uFY7wFNIYfTFhy-dHUI-3Q"     # <-- paste your TOTP token here
-GROWW_TOTP_SECRET = "RYZOPWY4BVDYTKTQPN2T6DZMO27Y2IXM"     # <-- paste your TOTP secret here
-
-GROWW_API_TOKEN   = ""     # OR a single daily access token instead of the two above
+GROWW_TOTP_TOKEN=eyJraWQiOiJaTUtjVXciLCJhbGciOiJFUzI1NiJ9.eyJleHAiOjI1Njk3NjYzNDYsImlhdCI6MTc4MTM2NjM0NiwibmJmIjoxNzgxMzY2MzQ2LCJzdWIiOiJ7XCJ0b2tlblJlZklkXCI6XCI5MTVjNjliZS02NTliLTQ3NzQtYjliOC0xMmNmOTZlNWY4YjlcIixcInZlbmRvckludGVncmF0aW9uS2V5XCI6XCJlMzFmZjIzYjA4NmI0MDZjODg3NGIyZjZkODQ5NTMxM1wiLFwidXNlckFjY291bnRJZFwiOlwiMTg2NTEzZDMtNmY4ZC00NWJiLThkOGItMjA2YTZhODc5NDk5XCIsXCJkZXZpY2VJZFwiOlwiMTI4Y2YxYzMtMTY5OS01OWRjLTk2MDItYjhmNWE1YmIzM2UwXCIsXCJzZXNzaW9uSWRcIjpcIjU1NTM2Y2RhLThhNGUtNDU5OC04NzQxLWEyOTEwYjkyYWUxMlwiLFwiYWRkaXRpb25hbERhdGFcIjpcIno1NC9NZzltdjE2WXdmb0gvS0EwYkVSTlY3TE1vUHE1Nk9MeU8rdFZnU2xSTkczdTlLa2pWZDNoWjU1ZStNZERhWXBOVi9UOUxIRmtQejFFQisybTdRPT1cIixcInJvbGVcIjpcImF1dGgtdG90cFwiLFwic291cmNlSXBBZGRyZXNzXCI6XCI0OS4zNy4yMTguMjQ0LDEzNi4yMjYuMjQzLjE2LDE2Mi4xNTguNTUuMTAyLDM1LjI0MS4yMy4xMjNcIixcInR3b0ZhRXhwaXJ5VHNcIjoyNTY5NzY2MzQ2MzkyLFwidmVuZG9yTmFtZVwiOlwiZ3Jvd3dBcGlcIn0iLCJpc3MiOiJhcGV4LWF1dGgtcHJvZC1hcHAifQ.TH5gyWFl7VyBRNfpKghdFGUfST5hfyx0EEw1-wkf54aOAsRsSyQky6AsJCB61OI5uFY7wFNIYfTFhy-dHUI-3Q
+GROWW_TOTP_SECRET=RYZOPWY4BVDYTKTQPN2T6DZMO27Y2IXM
 
 # Zerodha (only if LIVE_BROKER = "zerodha"):
 ZERODHA_API_KEY      = ""
@@ -97,6 +95,7 @@ PIVOT_OFFSET = 100           # SELL1 pivot must be at least this far from entry
 ALLOW_MULTIPLE_TRADES = True # subsequent trades use today's running high/low (SecondTrade SPs)
 ONE_TRADE_PER_DAY = not ALLOW_MULTIPLE_TRADES   # used by the older modelled backtest / live-paper paths
 DEBUG_SKIPS = os.environ.get("DEBUG_SKIPS", "0") == "1"   # print near-miss setups that didn't fire
+PAPER_BUNDLE = os.environ.get("PAPER_BUNDLE", "paper_bundle.json")  # live-paper -> dashboard
 _SKIPS = []                # collected near-miss setups (for the dashboard bundle)
 LAST_RUN = {}              # last backtest result, used by export_bundle()
 
@@ -486,6 +485,8 @@ def summarise(trades):
 
 class OptionBroker:
     def index_5min(self, days=3): raise NotImplementedError
+    def index_1min(self, days=2): raise NotImplementedError          # for the YCloseBounce 1m trigger
+    def option_1min(self, symbol, days=1): raise NotImplementedError  # for the pre-entry premium low
     def monthly_expiry(self): raise NotImplementedError
     def option_symbol(self, strike, opt, expiry): raise NotImplementedError
     def option_ltp(self, symbol): raise NotImplementedError
@@ -521,6 +522,26 @@ class ZerodhaOptionBroker(OptionBroker):
     def index_5min(self, days=3):
         end = datetime.now(); start = end - timedelta(days=days)
         data = self.kite.historical_data(self._index_token(), start, end, "5minute")
+        df = pd.DataFrame(data).rename(columns={"date": "Date", "open": "Open", "high": "High",
+                                                "low": "Low", "close": "Close"})
+        return df.set_index(pd.to_datetime(df["Date"]))[["Open", "High", "Low", "Close"]]
+
+    def index_1min(self, days=2):
+        end = datetime.now(); start = end - timedelta(days=days)
+        data = self.kite.historical_data(self._index_token(), start, end, "minute")
+        df = pd.DataFrame(data).rename(columns={"date": "Date", "open": "Open", "high": "High",
+                                                "low": "Low", "close": "Close"})
+        return df.set_index(pd.to_datetime(df["Date"]))[["Open", "High", "Low", "Close"]]
+
+    def _option_token(self, symbol):
+        for i in self._nfo_dump():
+            if i["tradingsymbol"] == symbol:
+                return i["instrument_token"]
+        raise LookupError(f"option token not found for {symbol}")
+
+    def option_1min(self, symbol, days=1):
+        end = datetime.now(); start = end - timedelta(days=days)
+        data = self.kite.historical_data(self._option_token(symbol), start, end, "minute")
         df = pd.DataFrame(data).rename(columns={"date": "Date", "open": "Open", "high": "High",
                                                 "low": "Low", "close": "Close"})
         return df.set_index(pd.to_datetime(df["Date"]))[["Open", "High", "Low", "Close"]]
@@ -578,6 +599,29 @@ class GrowwOptionBroker(OptionBroker):
         else:
             df.index = pd.to_datetime(ts)
         return df[["Open", "High", "Low", "Close"]].astype(float).sort_index()
+
+    def _candles(self, segment, symbol, days, interval_const):
+        end = datetime.now(); start = end - timedelta(days=days)
+        resp = self.g.get_historical_candles(
+            exchange=self.g.EXCHANGE_NSE, segment=segment, groww_symbol=symbol,
+            start_time=start.strftime("%Y-%m-%d %H:%M:%S"), end_time=end.strftime("%Y-%m-%d %H:%M:%S"),
+            candle_interval=getattr(self.g, interval_const))
+        rows = resp.get("candles", []) if isinstance(resp, dict) else (resp or [])
+        if not rows:
+            return pd.DataFrame(columns=["Open", "High", "Low", "Close"])
+        names = ["ts", "Open", "High", "Low", "Close", "Volume", "OI"][:len(rows[0])]
+        df = pd.DataFrame(rows, columns=names); ts = df["ts"]
+        if pd.api.types.is_numeric_dtype(ts):
+            df.index = pd.to_datetime(ts, unit="ms" if float(ts.iloc[0]) > 1e12 else "s")
+        else:
+            df.index = pd.to_datetime(ts)
+        return df[["Open", "High", "Low", "Close"]].astype(float).sort_index()
+
+    def index_1min(self, days=2):
+        return self._candles(self.g.SEGMENT_CASH, INDEX_GROWW_SYMBOL, days, "CANDLE_INTERVAL_MIN_1")
+
+    def option_1min(self, symbol, days=1):
+        return self._candles(self.g.SEGMENT_FNO, symbol, days, "CANDLE_INTERVAL_MIN_1")
 
     def monthly_expiry(self):
         now = pd.Timestamp.now()
@@ -640,122 +684,161 @@ def _save_state(s):
         json.dump(s, f, indent=2, default=str)
 
 
+def _paper_bundle(s, candles5):
+    """Convert live-paper state into the same bundle schema the dashboard reads,
+    plus an open-position summary and realized P&L."""
+    candles = []
+    if candles5 is not None and len(candles5):
+        cc = candles5.reset_index(); tcol = cc.columns[0]
+        for _, r in cc.iterrows():
+            candles.append({"dt": str(r[tcol]), "Open": float(r["Open"]), "High": float(r["High"]),
+                            "Low": float(r["Low"]), "Close": float(r["Close"]), "osc": float(r.get("osc", 0.0))})
+    trades = []; cur = None                                          # group fills into trades
+    for f in s.get("trades", []):
+        if f["side"] == "BUY":
+            cur = {"date": s.get("day", ""), "opt": f["opt"], "strike": f["strike"], "lots": f["lots"],
+                   "entry_spot": f.get("spot"), "entry_prem": f["prem"], "entry_time": f["ts"],
+                   "stop": f.get("stop", 0), "t1": f.get("t1", 0), "reason": "live paper",
+                   "mfe": 0, "mae": 0,
+                   "legs": [{"reason": "ENTRY_FEE", "lots": 0, "prem": f["prem"], "pnl": f["pnl"],
+                             "time": f["ts"], "spot": f.get("spot"), "detail": "buy"}]}
+            trades.append(cur)
+        elif cur is not None:
+            cur["legs"].append({"reason": f["side"], "lots": f["lots"], "prem": f["prem"], "pnl": f["pnl"],
+                                "time": f["ts"], "spot": f.get("spot"), "detail": ""})
+    for t in trades:
+        t["pnl"] = round(sum(l["pnl"] for l in t["legs"]), 2)
+    return {"underlying": UNDERLYING, "lot_size": LOT_SIZE, "strike_mode": "live-paper",
+            "trades": trades, "skips": [], "candles": candles,
+            "open_position": s.get("pos"), "realized_pnl": round(sum(t["pnl"] for t in trades), 2),
+            "updated": str(pd.Timestamp.now())}
+
+
+def _write_paper_bundle(s, candles5, path=None):
+    import json
+    try:
+        with open(path or PAPER_BUNDLE, "w") as f:
+            json.dump(_paper_bundle(s, candles5), f)
+    except Exception as e:
+        _log(f"paper-bundle write failed: {e}")
+
+
 def run_live_paper():
-    cost = OptCost()
-    broker = build_option_broker()
-    _log(f"PAPER intraday {UNDERLYING} on {LIVE_BROKER}, strike_mode={STRIKE_MODE}. No real orders.")
+    """Live PAPER trading on the SAME YCloseBounce brain as the backtest.
+    Only the source (live broker polls) and destination (paper log) differ from the
+    backtest; every decision routes through the shared _setup_side / _find_trigger /
+    _bounce_ok / _choose_strike / _size_premium / _exit_decision functions.
+    No real orders are ever placed."""
+    cost = OptCost(); broker = build_option_broker()
+    _log(f"PAPER intraday {UNDERLYING} on {LIVE_BROKER} (YCloseBounce, shared engine). No real orders.")
     s = _load_state()
 
     while True:
         try:
-            df = broker.index_5min(days=4)
-            df = df[~df.index.duplicated(keep="last")].sort_index()
-            df["osc"] = widner_oscillator(df["Close"])
-            by_date = list(df.groupby(df.index.normalize()))
-            if len(by_date) < 2:
+            idx5 = broker.index_5min(days=5)
+            idx5 = idx5[~idx5.index.duplicated(keep="last")].sort_index()
+            idx5["osc"] = widner_oscillator(idx5["Close"])
+            idx1 = broker.index_1min(days=2)
+            idx1 = idx1[~idx1.index.duplicated(keep="last")].sort_index()
+
+            by5 = list(idx5.groupby(idx5.index.normalize()))
+            if len(by5) < 2:
                 _time.sleep(LIVE_POLL_SECS); continue
-            today, day_df = by_date[-1]
-            _, prev_df = by_date[-2]
+            today, day5 = by5[-1]; _, prev5 = by5[-2]
+            day1 = idx1[idx1.index.normalize() == today]
 
-            # new session reset
-            if s["day"] != str(today.date()):
-                s.update({"day": str(today.date()), "phase": "WAIT", "armed": None, "ref": None,
-                          "pos": None, "day_hi": -1e18, "day_lo": 1e18, "last_ts": None,
-                          "prev_against": False, "done": False})
+            if s.get("day") != str(today.date()):                 # new session -> reset
+                s = {"day": str(today.date()), "pos": None, "trade_no": 0,
+                     "armed": None, "last_t2_5m": None, "trades": s.get("trades", [])}
 
-            PDH, PDL, PDC = prev_df["High"].max(), prev_df["Low"].min(), prev_df["Close"].iloc[-1]
+            PDH, PDL, PDC = prev5["High"].max(), prev5["Low"].min(), prev5["Close"].iloc[-1]
             piv = floor_pivots(PDH, PDL, PDC)
             expiry = broker.monthly_expiry()
-            T = max(1, (pd.Timestamp(expiry) - today).days) / 365.0
 
-            bars = list(day_df.iterrows())
-            done_bar = bars[:-1] if len(bars) > 1 else bars      # drop forming candle
-            # update running day hi/lo from all completed bars
-            for _, r in done_bar:
-                s["day_hi"] = max(s["day_hi"], r["High"]); s["day_lo"] = min(s["day_lo"], r["Low"])
-            if not done_bar:
-                _time.sleep(LIVE_POLL_SECS); continue
-            ts, row = done_bar[-1]
-            if s["last_ts"] == str(ts):                          # already processed this bar
-                _time.sleep(LIVE_POLL_SECS); continue
-            s["last_ts"] = str(ts)
-
-            idx_pos = list(day_df.index).index(ts)
-            if idx_pos < SKIP_CANDLES:
+            completed = day5.iloc[:-1] if len(day5) > 1 else day5  # drop the still-forming candle
+            if completed.empty:
                 _save_state(s); _time.sleep(LIVE_POLL_SECS); continue
+            run_lo = float(completed["Low"].min()); run_hi = float(completed["High"].max())
+            spot = float(day1["Close"].iloc[-1]) if len(day1) else float(completed["Close"].iloc[-1])
+            now_t = pd.Timestamp.now().time()
+            pos = s.get("pos")
 
-            green = row["Close"] > row["Open"]; red = row["Close"] < row["Open"]; osc = row["osc"]
-
-            # ---- manage open paper position ----
-            if s["pos"]:
-                p = s["pos"]; opt = p["opt"]
-                prem = broker.option_ltp(p["symbol"])            # REAL live premium
-                def paper_sell(n_lots, reason):
-                    if n_lots <= 0: return
+            # ---------- manage an open paper position ----------
+            if pos:
+                prem = broker.option_ltp(pos["symbol"])           # REAL live premium
+                last2 = None
+                last5_ts = str(completed.index[-1])
+                if pos["half"] and s.get("last_t2_5m") != last5_ts and len(completed) >= 2:
+                    last2 = (completed.iloc[-2], completed.iloc[-1]); s["last_t2_5m"] = last5_ts
+                action, n_lots, detail = _exit_decision(pos["opt"], pos, pos["t1"], now_t, spot, prem, last2)
+                if action:
                     fillp = cost.fill("SELL", prem); q = n_lots * LOT_SIZE
                     fee = cost.charge("SELL", fillp, q)
-                    pnl = (fillp - p["entry_fill"]) * q - fee
-                    s["trades"].append({"ts": str(ts), "opt": opt, "strike": p["strike"],
-                                        "side": reason, "lots": n_lots, "prem": round(fillp, 2),
-                                        "pnl": round(pnl, 2)})
-                    p["lots"] -= n_lots
-                    _log(f"SELL {n_lots} lot ({reason}) {opt} {p['strike']} @ {fillp:.1f}  pnl {pnl:.0f}")
-
-                hit_stop = (not p["half"]) and ((opt == "PE" and row["High"] >= p["stop_spot"]) or
-                                                (opt == "CE" and row["Low"] <= p["stop_spot"]))
-                t1 = (not p["half"]) and ((opt == "PE" and row["Low"] <= p["t1"]) or
-                                          (opt == "CE" and row["High"] >= p["t1"]))
-                if ts.time() >= SQUAREOFF:
-                    paper_sell(p["lots"], "TIME"); s["pos"] = None; s["done"] = True
-                elif hit_stop:
-                    paper_sell(p["lots"], "STOP"); s["pos"] = None; s["done"] = True
-                elif t1:
-                    paper_sell(math.ceil(p["lots"] / 2), "T1"); p["half"] = True
-                    if p["lots"] <= 0: s["pos"] = None; s["done"] = True
-                elif p["half"]:
-                    if prem <= p["entry_fill"]:
-                        paper_sell(p["lots"], "BE_STOP"); s["pos"] = None; s["done"] = True
+                    pnl = (fillp - pos["entry_fill"]) * q - fee
+                    s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": pos["opt"],
+                                        "strike": pos["strike"], "side": action, "lots": n_lots,
+                                        "prem": round(fillp, 2), "pnl": round(pnl, 2),
+                                        "spot": round(float(spot), 1)})
+                    _log(f"SELL {n_lots} ({action}) {pos['opt']} {pos['strike']} @ {fillp:.1f}  "
+                         f"pnl {pnl:.0f}  <- {detail}")
+                    pos["lots"] -= n_lots
+                    if action == "T1":
+                        pos["half"] = True; pos["stop_prem"] = pos["entry_fill"]
+                    if pos["lots"] <= 0 or action in ("TIME", "STOP", "BE_STOP", "T2"):
+                        s["pos"] = None; s["trade_no"] = s.get("trade_no", 0) + 1
                     else:
-                        against = green if opt == "PE" else red
-                        osc_ok = (osc > 0) if opt == "PE" else (osc < 0)
-                        if against and s["prev_against"] and osc_ok:
-                            paper_sell(p["lots"], "T2"); s["pos"] = None; s["done"] = True
-                if s["pos"]:
-                    s["prev_against"] = green if opt == "PE" else red
+                        s["pos"] = pos
+                else:
+                    s["pos"] = pos
 
-            # ---- arm / enter ----
-            elif not (ONE_TRADE_PER_DAY and s["done"]):
-                if s["phase"] != "ARMED":
-                    if row["High"] >= PDH and red and osc < 0:
-                        s.update({"phase": "ARMED", "armed": "PE", "ref": row["Low"]})
-                    elif row["Low"] <= PDL and green and osc > 0:
-                        s.update({"phase": "ARMED", "armed": "CE", "ref": row["High"]})
-                if s["phase"] == "ARMED":
-                    a, ref = s["armed"], s["ref"]
-                    trig = ((a == "PE" and row["Low"] <= ref - ENTRY_TRIGGER_PTS) or
-                            (a == "CE" and row["High"] >= ref + ENTRY_TRIGGER_PTS))
-                    if trig:
-                        entry_spot = (ref - ENTRY_TRIGGER_PTS) if a == "PE" else (ref + ENTRY_TRIGGER_PTS)
-                        stop_spot = (s["day_hi"] + STOP_BUFFER) if a == "PE" else (s["day_lo"] - STOP_BUFFER)
-                        K, _ = select_strike(entry_spot, a, T, ASSUMED_IV)
-                        sym = broker.option_symbol(K, a, expiry)
-                        prem = broker.option_ltp(sym)            # REAL live premium
-                        delta, _ = delta_from_premium(prem, entry_spot, K, T, RISK_FREE, a)
-                        lots, qty = size_position(delta, abs(entry_spot - stop_spot))
-                        if lots >= 1:
-                            fillp = cost.fill("BUY", prem)
-                            fee = cost.charge("BUY", fillp, qty)
-                            s["trades"].append({"ts": str(ts), "opt": a, "strike": K, "side": "BUY",
-                                                "lots": lots, "prem": round(fillp, 2), "pnl": -round(fee, 2)})
-                            s["pos"] = {"opt": a, "symbol": sym, "strike": K, "lots": lots,
-                                        "entry_fill": fillp, "stop_spot": stop_spot,
-                                        "t1": pick_t1(entry_spot, a, piv), "half": False}
-                            _log(f"BUY {lots} lot {a} {K} @ {fillp:.1f} (delta {delta:.2f}) "
-                                 f"stop {stop_spot:.0f} t1 {s['pos']['t1']:.0f}")
-                        s["phase"] = "WAIT"
+            # ---------- look for a new entry ----------
+            elif (ALLOW_MULTIPLE_TRADES or s.get("trade_no", 0) == 0) and now_t < SQUAREOFF:
+                first = (s.get("trade_no", 0) == 0)
+                setup_ts = completed.index[-1]; srow = completed.iloc[-1]
+                side = _setup_side(setup_ts, srow["Open"], srow["Close"], srow["osc"], first)
+                # arm on the freshest qualifying setup candle
+                if side and (s.get("armed") is None or s["armed"]["ts"] != str(setup_ts)):
+                    s["armed"] = {"ts": str(setup_ts), "hi": float(srow["High"]),
+                                  "lo": float(srow["Low"]), "side": side, "first": first}
+                armed = s.get("armed")
+                if armed:
+                    a_ts = pd.Timestamp(armed["ts"])
+                    if now_t > (a_ts + pd.Timedelta(minutes=TRIGGER_WINDOW_MIN)).time():
+                        s["armed"] = None                          # window expired, give up on it
+                    else:
+                        trig_ts, entry_spot = _find_trigger(day1, a_ts, armed["hi"], armed["lo"],
+                                                            armed["side"], armed["first"])
+                        level_lo = PDL if armed["first"] else run_lo
+                        level_hi = PDH if armed["first"] else run_hi
+                        if trig_ts is not None and _bounce_ok(entry_spot, level_lo, level_hi, armed["side"]):
+                            sd = armed["side"]; K = _choose_strike(entry_spot, sd)
+                            sym = broker.option_symbol(K, sd, expiry)
+                            entry_prem = broker.option_ltp(sym)
+                            try:
+                                opt1 = broker.option_1min(sym, days=1)
+                                pre = opt1[opt1.index <= pd.Timestamp.now()]
+                                premium_stop = float(pre["Low"].min()) if len(pre) else entry_prem * (1 - MIN_BUFFER_FRAC)
+                            except Exception:
+                                premium_stop = entry_prem * (1 - MIN_BUFFER_FRAC)
+                            lots, buf, floored, capped = _size_premium(entry_prem, premium_stop)
+                            if lots >= 1:
+                                fillp = cost.fill("BUY", entry_prem)
+                                fee = cost.charge("BUY", fillp, lots * LOT_SIZE)
+                                t1 = pick_t1(entry_spot, sd, piv)
+                                s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": sd, "strike": K,
+                                                    "side": "BUY", "lots": lots, "prem": round(fillp, 2),
+                                                    "pnl": -round(fee, 2), "spot": round(float(entry_spot), 1),
+                                                    "stop": round(premium_stop, 1), "t1": round(t1, 1)})
+                                s["pos"] = {"opt": sd, "symbol": sym, "strike": K, "lots": lots,
+                                            "entry_fill": fillp, "stop_prem": premium_stop, "t1": t1,
+                                            "half": False}
+                                _log(f"BUY {lots} {sd} {K} @ {fillp:.1f}  stop {premium_stop:.1f}  "
+                                     f"t1 {t1:.0f}  (trade #{s.get('trade_no',0)+1}{' CAPPED' if capped else ''})")
+                                s["armed"] = None
 
             _save_state(s)
-        except Exception as e:                                   # keep the loop alive
+            _write_paper_bundle(s, day5)                            # feed the dashboard
+        except Exception as e:                                     # keep the loop alive
             _log(f"error: {e}")
         _time.sleep(LIVE_POLL_SECS)
 
@@ -896,6 +979,79 @@ def _find_trigger(day1, setup_ts, setup_hi, setup_lo, side, first):
     return None, None
 
 
+# ============================================================
+# SHARED STRATEGY BRAIN  -- the SAME decisions for backtest and live paper.
+# These are pure functions: no data fetching, no order placement. The backtest
+# feeds them historical bars; the live runner feeds them broker polls. Source and
+# destination differ; the rules below do not.
+# ============================================================
+
+def _setup_side(ts, open_, close_, osc, first):
+    """A 5-min candle's setup side: CE (green + osc>0), PE (red + osc<0), else None.
+    Respects the 09:40 start and the lunch dead-zone."""
+    t = ts.time()
+    if t < dtime(9, 40):
+        return None
+    green, red = close_ > open_, close_ < open_
+    if green and osc > 0 and not _in_lunch(t, "CE", first):
+        return "CE"
+    if red and osc < 0 and not _in_lunch(t, "PE", first):
+        return "PE"
+    return None
+
+
+def _bounce_ok(entry_spot, level_lo, level_hi, side):
+    """Trigger price must be within BOUNCE_BAND of yesterday's (or today's running) level."""
+    if side == "CE":
+        return entry_spot <= level_lo + BOUNCE_BAND
+    return entry_spot >= level_hi - BOUNCE_BAND
+
+
+def _choose_strike(entry_spot, side):
+    """500-point OTM strike, rounded to the strike step."""
+    pts = OTM_POINTS if side == "CE" else -OTM_POINTS
+    return round((entry_spot + pts) / STRIKE_STEP) * STRIKE_STEP
+
+
+def _size_premium(entry_prem, premium_stop):
+    """Premium-buffer sizing. Returns (lots, buffer, floored?, capped?)."""
+    raw_buf = entry_prem - premium_stop + 1.0
+    floor_buf = MIN_BUFFER_FRAC * max(entry_prem, 1e-9)
+    buf = max(raw_buf, floor_buf)
+    floored = raw_buf < floor_buf
+    raw_lots = int(RISK_PER_TRADE / buf / LOT_SIZE) if buf > 0 else 0
+    lots = max(0, min(raw_lots, MAX_LOTS))
+    return lots, buf, floored, (raw_lots > MAX_LOTS)
+
+
+def _size_by_premium(entry_prem, premium_stop):   # backward-compatible thin wrapper
+    return _size_premium(entry_prem, premium_stop)[0]
+
+
+def _exit_decision(side, pos, t1, now_time, spot, prem, last2_5m):
+    """Decide the exit action for the current tick. Returns (action, n_lots, detail);
+    action is one of None/TIME/STOP/BE_STOP/T1/T2. The caller books the fill and,
+    for T1, sets pos['half']=True and trails pos['stop_prem'] to breakeven."""
+    if now_time >= SQUAREOFF:
+        return ("TIME", pos["lots"], "15:20 square-off")
+    if prem is not None and prem <= pos["stop_prem"]:
+        return ("BE_STOP" if pos["half"] else "STOP", pos["lots"],
+                f"prem {prem:.1f} <= stop {pos['stop_prem']:.1f}")
+    if not pos["half"]:
+        hit = (spot >= t1) if side == "CE" else (spot <= t1)
+        if hit and prem is not None:
+            return ("T1", math.ceil(pos["lots"] / 2), f"spot {spot:.0f} reached pivot {t1:.0f}")
+    elif last2_5m is not None and prem is not None:        # T2 only after T1, on a completed-5m basis
+        c0, c1 = last2_5m
+        if side == "PE":
+            against = (c1["Close"] > c1["Open"]) and (c0["Close"] > c0["Open"]); osc_ok = c1["osc"] > 0; col = "green"
+        else:
+            against = (c1["Close"] < c1["Open"]) and (c0["Close"] < c0["Open"]); osc_ok = c1["osc"] < 0; col = "red"
+        if against and osc_ok:
+            return ("T2", pos["lots"], f"2 {col} 5m + {col} osc")
+    return (None, 0, "")
+
+
 def backtest_real_groww(start, end, cost=None, g=None):
     """Real-data backtest matching the YCloseBounce stored procedures
     (5-min setup + 1-min trigger bounce near yesterday's / today's level),
@@ -956,11 +1112,7 @@ def backtest_real_groww(start, end, cost=None, g=None):
             level_lo = PDL if first else run_lo[i]
             level_hi = PDH if first else run_hi[i]
 
-            side = None
-            if green and osc > 0 and not _in_lunch(setup_ts.time(), "CE", first):
-                side = "CE"
-            elif red and osc < 0 and not _in_lunch(setup_ts.time(), "PE", first):
-                side = "PE"
+            side = _setup_side(setup_ts, s["Open"], s["Close"], osc, first)
             if side is None:
                 i += 1; continue
 
@@ -972,17 +1124,13 @@ def backtest_real_groww(start, end, cost=None, g=None):
             ref_name = (("yest-low" if first else "today-low") if side == "CE"
                         else ("yest-high" if first else "today-high"))
             ref_lvl = level_lo if side == "CE" else level_hi
-            if side == "CE" and not (entry_spot <= level_lo + BOUNCE_BAND):
-                _skip(f"[skip] {date.date()} {trig_ts.time()} CE entry {entry_spot:.0f} outside "
-                          f"band ({ref_name} {ref_lvl:.0f}+{BOUNCE_BAND})")
-                i += 1; continue
-            if side == "PE" and not (entry_spot >= level_hi - BOUNCE_BAND):
-                _skip(f"[skip] {date.date()} {trig_ts.time()} PE entry {entry_spot:.0f} outside "
-                          f"band ({ref_name} {ref_lvl:.0f}-{BOUNCE_BAND})")
+            if not _bounce_ok(entry_spot, level_lo, level_hi, side):
+                sgn = "+" if side == "CE" else "-"
+                _skip(f"[skip] {date.date()} {trig_ts.time()} {side} entry {entry_spot:.0f} outside "
+                      f"band ({ref_name} {ref_lvl:.0f}{sgn}{BOUNCE_BAND})")
                 i += 1; continue
 
-            K = (round((entry_spot + OTM_POINTS) / STRIKE_STEP) * STRIKE_STEP if side == "CE"
-                 else round((entry_spot - OTM_POINTS) / STRIKE_STEP) * STRIKE_STEP)
+            K = _choose_strike(entry_spot, side)
             sym = f"NSE-{UNDERLYING}-{pd.Timestamp(expiry).strftime('%d%b%y')}-{int(K)}-{side}"
             opt = opt_data(date, sym)
             if opt.empty:
@@ -996,11 +1144,7 @@ def backtest_real_groww(start, end, cost=None, g=None):
             pre = opt[opt.index <= trig_ts]
             premium_stop = float(pre["Low"].min()) if len(pre) else entry_prem * (1 - MIN_BUFFER_FRAC)
 
-            raw_buf = entry_prem - premium_stop + 1.0           # premium-buffer sizing (with flags)
-            floor_buf = MIN_BUFFER_FRAC * max(entry_prem, 1e-9)
-            buf = max(raw_buf, floor_buf); floored = raw_buf < floor_buf
-            raw_lots = int(RISK_PER_TRADE / buf / LOT_SIZE) if buf > 0 else 0
-            lots = max(0, min(raw_lots, MAX_LOTS)); capped = raw_lots > MAX_LOTS
+            lots, buf, floored, capped = _size_premium(entry_prem, premium_stop)
             if lots < 1:
                 _skip(f"[skip] {date.date()} {trig_ts.time()} {side} - buffer {buf:.1f} too wide "
                           f"for 1 lot (prem {entry_prem:.1f}, stop {premium_stop:.1f})")
@@ -1046,36 +1190,22 @@ def backtest_real_groww(start, end, cost=None, g=None):
                 if prem is not None:                              # excursions in premium points
                     mfe = max(mfe, prem - pos["entry_fill"]); mae = min(mae, prem - pos["entry_fill"])
 
-                if tts.time() >= SQUAREOFF:
-                    book(pos["lots"], "TIME", prem if prem is not None else pos["entry_fill"],
-                         tts, spot_now, "15:20 square-off")
-                    exit_ts = tts; break
-                if prem is not None and prem <= pos["stop_prem"]:
-                    book(pos["lots"], "BE_STOP" if pos["half"] else "STOP", prem, tts, spot_now,
-                         f"prem {prem:.1f} <= stop {pos['stop_prem']:.1f}")
-                    exit_ts = tts; break
-                if not pos["half"]:
-                    hit = (spot_now >= t1) if side == "CE" else (spot_now <= t1)
-                    if hit and prem is not None:
-                        book(math.ceil(pos["lots"] / 2), "T1", prem, tts, spot_now,
-                             f"spot {spot_now:.0f} reached pivot {t1:.0f}")
-                        pos["half"] = True; pos["stop_prem"] = pos["entry_fill"]
-                        if pos["lots"] <= 0:
-                            exit_ts = tts; break
-                        continue
+                last2 = None
                 if pos["half"] and tts.minute % 5 == 0:
                     done5 = day5[day5.index < tts]
                     if len(done5) >= 2:
-                        c1 = done5.iloc[-1]; c0 = done5.iloc[-2]
-                        if side == "PE":
-                            against = (c1["Close"] > c1["Open"]) and (c0["Close"] > c0["Open"])
-                            osc_ok = c1["osc"] > 0; col = "green"
-                        else:
-                            against = (c1["Close"] < c1["Open"]) and (c0["Close"] < c0["Open"])
-                            osc_ok = c1["osc"] < 0; col = "red"
-                        if against and osc_ok and prem is not None:
-                            book(pos["lots"], "T2", prem, tts, spot_now, f"2 {col} 5m + {col} osc")
-                            exit_ts = tts; break
+                        last2 = (done5.iloc[-2], done5.iloc[-1])
+                action, n_lots, detail = _exit_decision(side, pos, t1, tts.time(), spot_now, prem, last2)
+                if action == "T1":
+                    book(n_lots, "T1", prem, tts, spot_now, detail)
+                    pos["half"] = True; pos["stop_prem"] = pos["entry_fill"]
+                    if pos["lots"] <= 0:
+                        exit_ts = tts; break
+                    continue
+                if action:
+                    book(n_lots, action, prem if prem is not None else pos["entry_fill"],
+                         tts, spot_now, detail)
+                    exit_ts = tts; break
 
             if pos["lots"] > 0 and exit_ts is None:
                 last_ts = day1.index[-1]
