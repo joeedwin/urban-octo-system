@@ -83,7 +83,7 @@ STRIKE_STEP = 100
 T1_MIN_PTS = 100
 ENTRY_TRIGGER_PTS = 30        # CE first-trade only: 1m must break setup high + 30
 STOP_BUFFER = 1.0
-SKIP_CANDLES = 5              # no setup before 09:40 (first 5 5-min candles)
+SKIP_CANDLES = 9             # no setup before 09:40 (first 5 5-min candles)
 SQUAREOFF = dtime(15, 20)
 
 # --- YCloseBounce setup rules (match the stored procedures) ---
