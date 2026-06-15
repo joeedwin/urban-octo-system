@@ -273,7 +273,7 @@ def main():
                 st.error("Enter both the TOTP token and secret.")
                 return
             try:
-                import intraday_bnf_options as strat
+                import intra as strat
             except ImportError as e:
                 st.error("Live mode needs **intraday_bnf_options.py next to app.py** (the strategy "
                          f"engine), plus growwapi + pyotp. Missing: {e}")
