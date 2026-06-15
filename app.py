@@ -11,6 +11,17 @@ except Exception:
     pass
 
 
+def load_engine():
+    """Import the strategy engine regardless of its filename (intraday_bnf_options.py or intra.py)."""
+    import importlib
+    for name in ("intraday_bnf_options", "intra"):
+        try:
+            return importlib.import_module(name)
+        except ImportError:
+            continue
+    raise ImportError("engine not found \u2014 expected intraday_bnf_options.py or intra.py next to app.py")
+
+
 # ---------- pure helpers (importable / testable, no Streamlit) ----------
 
 def floor_pivots(h, l, c):
@@ -34,6 +45,7 @@ def load_bundle(raw):
     return {"meta": {k: raw.get(k) for k in ("underlying", "lot_size", "strike_mode")},
             "candles": cdf, "trades": raw.get("trades", []), "skips": raw.get("skips", []),
             "open_position": raw.get("open_position"), "realized_pnl": raw.get("realized_pnl"),
+            "last_decision": raw.get("last_decision"), "decisions": raw.get("decisions", []),
             "updated": raw.get("updated")}
 
 
@@ -193,9 +205,9 @@ def main():
             st.error("Enter both the TOTP token and secret.")
             return
         try:
-            import intra as strat
+            strat = load_engine()
         except ImportError as e:
-            st.error(f"Needs **intraday_bnf_ions.py next to app.py**, plus growwapi + pyotp. Missing: {e}")
+            st.error(f"Needs **intraday_bnf_options.py next to app.py**, plus growwapi + pyotp. Missing: {e}")
             return
         if "paper_broker" not in st.session_state:                 # log in once, then reuse
             try:
@@ -273,7 +285,7 @@ def main():
                 st.error("Enter both the TOTP token and secret.")
                 return
             try:
-                import intra as strat
+                strat = load_engine()
             except ImportError as e:
                 st.error("Live mode needs **intraday_bnf_options.py next to app.py** (the strategy "
                          f"engine), plus growwapi + pyotp. Missing: {e}")
@@ -309,6 +321,46 @@ def main():
         c3.metric("Realized P&L", f"{b.get('realized_pnl', 0):,.0f}")
         if b.get("updated"):
             st.caption(f"Last updated: {b['updated']}")
+
+    ld = b.get("last_decision")
+    if ld and ld.get("candle"):                                   # rich live "now" panel
+        st.markdown("#### What the strategy sees now")
+        st.markdown(f"**State:** `{ld.get('state','FLAT')}`  \u2014  {ld.get('action','')}")
+        cc = ld.get("candle", {}); lv = ld.get("levels", {})
+        a, c, e = st.columns(3)
+        a.metric("Spot", f"{ld.get('spot','?')}")
+        a.caption(f"setup candle: {cc.get('colour','?')} \u00b7 "
+                  f"O{cc.get('o')} H{cc.get('h')} L{cc.get('l')} C{cc.get('c')}")
+        c.metric("Oscillator", f"{cc.get('osc','?')}", cc.get("osc_colour", ""))
+        c.caption(f"candle {cc.get('time','')[-8:]}")
+        e.metric(f"Yesterday (src: {lv.get('src','?')})", f"H {lv.get('PDH','?')}")
+        e.caption(f"L {lv.get('PDL','?')} \u00b7 C {lv.get('PDC','?')} \u00b7 "
+                  f"today {lv.get('run_lo','?')}\u2013{lv.get('run_hi','?')}")
+        piv = lv.get("pivots", {})
+        if piv:
+            st.caption("Pivots \u2014 " + "   ".join(f"{k} {piv[k]}"
+                       for k in ("R3", "R2", "R1", "P", "S1", "S2", "S3") if k in piv))
+        ck = ld.get("checks", {})
+        if "armed" in ck:
+            am = ck["armed"]
+            st.info(f"**ARMED {am['side']}** \u2014 waiting for **{am['waiting_for']}**, "
+                    f"bounce {am['bounce_level']}, expires {am['expires']}")
+        if "position" in ck:
+            ps = ck["position"]
+            st.info(f"**IN POSITION {ps['opt']} {ps['strike']} \u00d7{ps['lots']}** \u2014 "
+                    f"prem now {ps['prem_now']} vs stop {ps['stop_prem']}, T1 {ps['t1']}"
+                    + ("  (half booked)" if ps.get("half") else ""))
+
+    decs = b.get("decisions", [])                                 # decision log (live AND backtest)
+    if decs:
+        label = "Live decision log" if (ld and ld.get("candle")) else "Decision log (why each setup did/didn't trade)"
+        with st.expander(f"{label} \u2014 {len(decs)} entries (latest first)"):
+            for d in reversed(decs[-80:]):
+                st.markdown(f"`{str(d.get('ts',''))[11:19]}` **{d.get('state','')}** "
+                            f"\u2014 {d.get('action','')}")
+    if ld and ld.get("candle"):
+        with st.expander("Latest decision \u2014 raw detail"):
+            st.json(ld)
 
     s = stats(b["trades"])
     if s:
