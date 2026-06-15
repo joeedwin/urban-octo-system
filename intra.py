@@ -124,12 +124,12 @@ OSC_LAYERS = 10
 OSC_LOOKBACK = 10
 
 # Live
-LIVE_BROKER = os.environ.get("LIVE_BROKER", "zerodha")    # "zerodha" | "groww"
+LIVE_BROKER = os.environ.get("LIVE_BROKER", "groww")    # "zerodha" | "groww"
 UNDERLYING = "BANKNIFTY"
 INDEX_KITE_SYMBOL = "NIFTY BANK"                          # Kite NSE index tradingsymbol
 INDEX_KITE_EXCHANGE = "NSE"
 INDEX_GROWW_SYMBOL = os.environ.get("INDEX_GROWW_SYMBOL", "NSE-BANKNIFTY")   # confirm ticker via Get Instruments CSV
-LIVE_STATE_PATH = "intraday_paper_state.json"
+LIVE_STATE_PATH = "intra.json"
 LIVE_POLL_SECS = 60
 
 
