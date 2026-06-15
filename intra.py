@@ -46,10 +46,18 @@ except Exception:
 
 print("[boot] strategy file loaded", flush=True)   # if you never see this, the file isn't being run
 
+try:
+    from dotenv import load_dotenv     # pip install python-dotenv  (optional)
+    load_dotenv()                      # read GROWW_TOTP_SECRET etc. from a local .env file
+except Exception:
+    pass
+
 # ==========================================
-# CREDENTIALS  -- fill these in ONLY in your private copy / Groww Cloud editor.
+# CREDENTIALS
+# Prefer ENVIRONMENT VARIABLES (or a local .env file) over editing this file.
+# Set: GROWW_TOTP_TOKEN, GROWW_TOTP_SECRET   (or GROWW_API_TOKEN for a daily token)
+# Only fill the blanks below in a PRIVATE copy if you can't use env vars.
 # Keep this file PRIVATE: never share it, commit it to git, screenshot it, or post it.
-# On your own computer you can leave these blank and use environment variables instead.
 # ==========================================
 
 # Groww TOTP flow (your "API key" = TOTP token, plus the TOTP secret):
@@ -724,124 +732,124 @@ def _write_paper_bundle(s, candles5, path=None):
         _log(f"paper-bundle write failed: {e}")
 
 
+def live_paper_step(broker, cost, s):
+    """ONE poll of the live-paper loop: fetch -> shared-brain decision -> update state.
+    Returns (state, day5_candles_or_None). No real orders. Reused by the runner AND the dashboard."""
+    idx5 = broker.index_5min(days=5)
+    idx5 = idx5[~idx5.index.duplicated(keep="last")].sort_index()
+    idx5["osc"] = widner_oscillator(idx5["Close"])
+    idx1 = broker.index_1min(days=2)
+    idx1 = idx1[~idx1.index.duplicated(keep="last")].sort_index()
+
+    by5 = list(idx5.groupby(idx5.index.normalize()))
+    if len(by5) < 2:
+        return s, None
+    today, day5 = by5[-1]; _, prev5 = by5[-2]
+    day1 = idx1[idx1.index.normalize() == today]
+
+    if s.get("day") != str(today.date()):                 # new session -> reset
+        s = {"day": str(today.date()), "pos": None, "trade_no": 0,
+             "armed": None, "last_t2_5m": None, "trades": s.get("trades", [])}
+
+    PDH, PDL, PDC = prev5["High"].max(), prev5["Low"].min(), prev5["Close"].iloc[-1]
+    piv = floor_pivots(PDH, PDL, PDC)
+    expiry = broker.monthly_expiry()
+
+    completed = day5.iloc[:-1] if len(day5) > 1 else day5  # drop the still-forming candle
+    if completed.empty:
+        return s, day5
+    run_lo = float(completed["Low"].min()); run_hi = float(completed["High"].max())
+    spot = float(day1["Close"].iloc[-1]) if len(day1) else float(completed["Close"].iloc[-1])
+    now_t = pd.Timestamp.now().time()
+    pos = s.get("pos")
+
+    # ---------- manage an open paper position ----------
+    if pos:
+        prem = broker.option_ltp(pos["symbol"])           # REAL live premium
+        last2 = None
+        last5_ts = str(completed.index[-1])
+        if pos["half"] and s.get("last_t2_5m") != last5_ts and len(completed) >= 2:
+            last2 = (completed.iloc[-2], completed.iloc[-1]); s["last_t2_5m"] = last5_ts
+        action, n_lots, detail = _exit_decision(pos["opt"], pos, pos["t1"], now_t, spot, prem, last2)
+        if action:
+            fillp = cost.fill("SELL", prem); q = n_lots * LOT_SIZE
+            fee = cost.charge("SELL", fillp, q)
+            pnl = (fillp - pos["entry_fill"]) * q - fee
+            s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": pos["opt"],
+                                "strike": pos["strike"], "side": action, "lots": n_lots,
+                                "prem": round(fillp, 2), "pnl": round(pnl, 2),
+                                "spot": round(float(spot), 1)})
+            _log(f"SELL {n_lots} ({action}) {pos['opt']} {pos['strike']} @ {fillp:.1f}  "
+                 f"pnl {pnl:.0f}  <- {detail}")
+            pos["lots"] -= n_lots
+            if action == "T1":
+                pos["half"] = True; pos["stop_prem"] = pos["entry_fill"]
+            if pos["lots"] <= 0 or action in ("TIME", "STOP", "BE_STOP", "T2"):
+                s["pos"] = None; s["trade_no"] = s.get("trade_no", 0) + 1
+            else:
+                s["pos"] = pos
+        else:
+            s["pos"] = pos
+
+    # ---------- look for a new entry ----------
+    elif (ALLOW_MULTIPLE_TRADES or s.get("trade_no", 0) == 0) and now_t < SQUAREOFF:
+        first = (s.get("trade_no", 0) == 0)
+        setup_ts = completed.index[-1]; srow = completed.iloc[-1]
+        side = _setup_side(setup_ts, srow["Open"], srow["Close"], srow["osc"], first)
+        # arm on the freshest qualifying setup candle
+        if side and (s.get("armed") is None or s["armed"]["ts"] != str(setup_ts)):
+            s["armed"] = {"ts": str(setup_ts), "hi": float(srow["High"]),
+                          "lo": float(srow["Low"]), "side": side, "first": first}
+        armed = s.get("armed")
+        if armed:
+            a_ts = pd.Timestamp(armed["ts"])
+            if now_t > (a_ts + pd.Timedelta(minutes=TRIGGER_WINDOW_MIN)).time():
+                s["armed"] = None                          # window expired, give up on it
+            else:
+                trig_ts, entry_spot = _find_trigger(day1, a_ts, armed["hi"], armed["lo"],
+                                                    armed["side"], armed["first"])
+                level_lo = PDL if armed["first"] else run_lo
+                level_hi = PDH if armed["first"] else run_hi
+                if trig_ts is not None and _bounce_ok(entry_spot, level_lo, level_hi, armed["side"]):
+                    sd = armed["side"]; K = _choose_strike(entry_spot, sd)
+                    sym = broker.option_symbol(K, sd, expiry)
+                    entry_prem = broker.option_ltp(sym)
+                    try:
+                        opt1 = broker.option_1min(sym, days=1)
+                        pre = opt1[opt1.index <= pd.Timestamp.now()]
+                        premium_stop = float(pre["Low"].min()) if len(pre) else entry_prem * (1 - MIN_BUFFER_FRAC)
+                    except Exception:
+                        premium_stop = entry_prem * (1 - MIN_BUFFER_FRAC)
+                    lots, buf, floored, capped = _size_premium(entry_prem, premium_stop)
+                    if lots >= 1:
+                        fillp = cost.fill("BUY", entry_prem)
+                        fee = cost.charge("BUY", fillp, lots * LOT_SIZE)
+                        t1 = pick_t1(entry_spot, sd, piv)
+                        s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": sd, "strike": K,
+                                            "side": "BUY", "lots": lots, "prem": round(fillp, 2),
+                                            "pnl": -round(fee, 2), "spot": round(float(entry_spot), 1),
+                                            "stop": round(premium_stop, 1), "t1": round(t1, 1)})
+                        s["pos"] = {"opt": sd, "symbol": sym, "strike": K, "lots": lots,
+                                    "entry_fill": fillp, "stop_prem": premium_stop, "t1": t1,
+                                    "half": False}
+                        _log(f"BUY {lots} {sd} {K} @ {fillp:.1f}  stop {premium_stop:.1f}  "
+                             f"t1 {t1:.0f}  (trade #{s.get('trade_no',0)+1}{' CAPPED' if capped else ''})")
+                        s["armed"] = None
+
+    return s, day5
+
+
 def run_live_paper():
-    """Live PAPER trading on the SAME YCloseBounce brain as the backtest.
-    Only the source (live broker polls) and destination (paper log) differ from the
-    backtest; every decision routes through the shared _setup_side / _find_trigger /
-    _bounce_ok / _choose_strike / _size_premium / _exit_decision functions.
-    No real orders are ever placed."""
+    """Live PAPER trading on the shared YCloseBounce brain. No real orders.
+    Per-poll logic lives in live_paper_step() so the dashboard can reuse it."""
     cost = OptCost(); broker = build_option_broker()
     _log(f"PAPER intraday {UNDERLYING} on {LIVE_BROKER} (YCloseBounce, shared engine). No real orders.")
     s = _load_state()
     _write_paper_bundle(s, None)          # create the file at once so the dashboard can read it
-
     while True:
         try:
-            idx5 = broker.index_5min(days=5)
-            idx5 = idx5[~idx5.index.duplicated(keep="last")].sort_index()
-            idx5["osc"] = widner_oscillator(idx5["Close"])
-            idx1 = broker.index_1min(days=2)
-            idx1 = idx1[~idx1.index.duplicated(keep="last")].sort_index()
-
-            by5 = list(idx5.groupby(idx5.index.normalize()))
-            if len(by5) < 2:
-                _write_paper_bundle(s, None)
-                _time.sleep(LIVE_POLL_SECS); continue
-            today, day5 = by5[-1]; _, prev5 = by5[-2]
-            day1 = idx1[idx1.index.normalize() == today]
-
-            if s.get("day") != str(today.date()):                 # new session -> reset
-                s = {"day": str(today.date()), "pos": None, "trade_no": 0,
-                     "armed": None, "last_t2_5m": None, "trades": s.get("trades", [])}
-
-            PDH, PDL, PDC = prev5["High"].max(), prev5["Low"].min(), prev5["Close"].iloc[-1]
-            piv = floor_pivots(PDH, PDL, PDC)
-            expiry = broker.monthly_expiry()
-
-            completed = day5.iloc[:-1] if len(day5) > 1 else day5  # drop the still-forming candle
-            if completed.empty:
-                _save_state(s); _write_paper_bundle(s, day5)
-                _time.sleep(LIVE_POLL_SECS); continue
-            run_lo = float(completed["Low"].min()); run_hi = float(completed["High"].max())
-            spot = float(day1["Close"].iloc[-1]) if len(day1) else float(completed["Close"].iloc[-1])
-            now_t = pd.Timestamp.now().time()
-            pos = s.get("pos")
-
-            # ---------- manage an open paper position ----------
-            if pos:
-                prem = broker.option_ltp(pos["symbol"])           # REAL live premium
-                last2 = None
-                last5_ts = str(completed.index[-1])
-                if pos["half"] and s.get("last_t2_5m") != last5_ts and len(completed) >= 2:
-                    last2 = (completed.iloc[-2], completed.iloc[-1]); s["last_t2_5m"] = last5_ts
-                action, n_lots, detail = _exit_decision(pos["opt"], pos, pos["t1"], now_t, spot, prem, last2)
-                if action:
-                    fillp = cost.fill("SELL", prem); q = n_lots * LOT_SIZE
-                    fee = cost.charge("SELL", fillp, q)
-                    pnl = (fillp - pos["entry_fill"]) * q - fee
-                    s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": pos["opt"],
-                                        "strike": pos["strike"], "side": action, "lots": n_lots,
-                                        "prem": round(fillp, 2), "pnl": round(pnl, 2),
-                                        "spot": round(float(spot), 1)})
-                    _log(f"SELL {n_lots} ({action}) {pos['opt']} {pos['strike']} @ {fillp:.1f}  "
-                         f"pnl {pnl:.0f}  <- {detail}")
-                    pos["lots"] -= n_lots
-                    if action == "T1":
-                        pos["half"] = True; pos["stop_prem"] = pos["entry_fill"]
-                    if pos["lots"] <= 0 or action in ("TIME", "STOP", "BE_STOP", "T2"):
-                        s["pos"] = None; s["trade_no"] = s.get("trade_no", 0) + 1
-                    else:
-                        s["pos"] = pos
-                else:
-                    s["pos"] = pos
-
-            # ---------- look for a new entry ----------
-            elif (ALLOW_MULTIPLE_TRADES or s.get("trade_no", 0) == 0) and now_t < SQUAREOFF:
-                first = (s.get("trade_no", 0) == 0)
-                setup_ts = completed.index[-1]; srow = completed.iloc[-1]
-                side = _setup_side(setup_ts, srow["Open"], srow["Close"], srow["osc"], first)
-                # arm on the freshest qualifying setup candle
-                if side and (s.get("armed") is None or s["armed"]["ts"] != str(setup_ts)):
-                    s["armed"] = {"ts": str(setup_ts), "hi": float(srow["High"]),
-                                  "lo": float(srow["Low"]), "side": side, "first": first}
-                armed = s.get("armed")
-                if armed:
-                    a_ts = pd.Timestamp(armed["ts"])
-                    if now_t > (a_ts + pd.Timedelta(minutes=TRIGGER_WINDOW_MIN)).time():
-                        s["armed"] = None                          # window expired, give up on it
-                    else:
-                        trig_ts, entry_spot = _find_trigger(day1, a_ts, armed["hi"], armed["lo"],
-                                                            armed["side"], armed["first"])
-                        level_lo = PDL if armed["first"] else run_lo
-                        level_hi = PDH if armed["first"] else run_hi
-                        if trig_ts is not None and _bounce_ok(entry_spot, level_lo, level_hi, armed["side"]):
-                            sd = armed["side"]; K = _choose_strike(entry_spot, sd)
-                            sym = broker.option_symbol(K, sd, expiry)
-                            entry_prem = broker.option_ltp(sym)
-                            try:
-                                opt1 = broker.option_1min(sym, days=1)
-                                pre = opt1[opt1.index <= pd.Timestamp.now()]
-                                premium_stop = float(pre["Low"].min()) if len(pre) else entry_prem * (1 - MIN_BUFFER_FRAC)
-                            except Exception:
-                                premium_stop = entry_prem * (1 - MIN_BUFFER_FRAC)
-                            lots, buf, floored, capped = _size_premium(entry_prem, premium_stop)
-                            if lots >= 1:
-                                fillp = cost.fill("BUY", entry_prem)
-                                fee = cost.charge("BUY", fillp, lots * LOT_SIZE)
-                                t1 = pick_t1(entry_spot, sd, piv)
-                                s["trades"].append({"ts": str(pd.Timestamp.now()), "opt": sd, "strike": K,
-                                                    "side": "BUY", "lots": lots, "prem": round(fillp, 2),
-                                                    "pnl": -round(fee, 2), "spot": round(float(entry_spot), 1),
-                                                    "stop": round(premium_stop, 1), "t1": round(t1, 1)})
-                                s["pos"] = {"opt": sd, "symbol": sym, "strike": K, "lots": lots,
-                                            "entry_fill": fillp, "stop_prem": premium_stop, "t1": t1,
-                                            "half": False}
-                                _log(f"BUY {lots} {sd} {K} @ {fillp:.1f}  stop {premium_stop:.1f}  "
-                                     f"t1 {t1:.0f}  (trade #{s.get('trade_no',0)+1}{' CAPPED' if capped else ''})")
-                                s["armed"] = None
-
-            _save_state(s)
-            _write_paper_bundle(s, day5)                            # feed the dashboard
+            s, day5 = live_paper_step(broker, cost, s)
+            _save_state(s); _write_paper_bundle(s, day5)
         except Exception as e:                                     # keep the loop alive
             _log(f"error: {e}")
         _time.sleep(LIVE_POLL_SECS)
