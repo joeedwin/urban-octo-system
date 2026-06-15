@@ -600,6 +600,8 @@ class GrowwOptionBroker(OptionBroker):
             end_time=end.strftime("%Y-%m-%d %H:%M:%S"),
             candle_interval=getattr(self.g, "CANDLE_INTERVAL_MIN_5"))
         rows = resp.get("candles", []) if isinstance(resp, dict) else (resp or [])
+        if not rows:
+            return pd.DataFrame(columns=["Open", "High", "Low", "Close"])
         names = ["ts", "Open", "High", "Low", "Close", "Volume", "OI"][:len(rows[0])]
         df = pd.DataFrame(rows, columns=names)
         ts = df["ts"]
@@ -732,13 +734,40 @@ def _write_paper_bundle(s, candles5, path=None):
         _log(f"paper-bundle write failed: {e}")
 
 
+def _ensure_dt(df):
+    """Guarantee a sorted DatetimeIndex on a candle frame; return an empty frame if not possible.
+    Protects the live loop when a broker returns no rows or a non-datetime index."""
+    empty = pd.DataFrame(columns=["Open", "High", "Low", "Close"], index=pd.DatetimeIndex([]))
+    if df is None or len(df) == 0:
+        return empty
+    if not isinstance(df.index, pd.DatetimeIndex):
+        col = next((c for c in ("ts", "Date", "date", "timestamp", "time") if c in df.columns), None)
+        try:
+            if col is not None:
+                v = df[col]
+                if pd.api.types.is_numeric_dtype(v):
+                    idx = pd.to_datetime(v, unit="ms" if float(v.iloc[0]) > 1e12 else "s")
+                else:
+                    idx = pd.to_datetime(v)
+                df = df.set_index(idx)
+            else:
+                df = df.set_index(pd.to_datetime(df.index, errors="coerce"))
+        except Exception:
+            return empty
+    df = df[~df.index.isna()]
+    keep = [c for c in ("Open", "High", "Low", "Close") if c in df.columns]
+    return df[keep].astype(float).sort_index() if keep else empty
+
+
 def live_paper_step(broker, cost, s):
     """ONE poll of the live-paper loop: fetch -> shared-brain decision -> update state.
     Returns (state, day5_candles_or_None). No real orders. Reused by the runner AND the dashboard."""
-    idx5 = broker.index_5min(days=5)
+    idx5 = _ensure_dt(broker.index_5min(days=5))
+    idx1 = _ensure_dt(broker.index_1min(days=2))
+    if len(idx5) < 2:                                     # no usable data yet -> wait
+        return s, None
     idx5 = idx5[~idx5.index.duplicated(keep="last")].sort_index()
     idx5["osc"] = widner_oscillator(idx5["Close"])
-    idx1 = broker.index_1min(days=2)
     idx1 = idx1[~idx1.index.duplicated(keep="last")].sort_index()
 
     by5 = list(idx5.groupby(idx5.index.normalize()))
