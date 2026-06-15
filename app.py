@@ -195,7 +195,7 @@ def main():
         try:
             import intra as strat
         except ImportError as e:
-            st.error(f"Needs **intraday_bnf_options.py next to app.py**, plus growwapi + pyotp. Missing: {e}")
+            st.error(f"Needs **intraday_bnf_ions.py next to app.py**, plus growwapi + pyotp. Missing: {e}")
             return
         if "paper_broker" not in st.session_state:                 # log in once, then reuse
             try:
