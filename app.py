@@ -29,6 +29,8 @@ def load_bundle(raw):
         cdf["dt"] = pd.to_datetime(cdf["dt"])
         cdf["date"] = cdf["dt"].dt.date.astype(str)
         cdf["color"] = cdf["osc"].apply(lambda x: "#26a69a" if x > 0 else ("#ef5350" if x < 0 else "#9e9e9e"))
+        cdf["over"] = cdf["osc"].abs().rolling(10, min_periods=1).max()    # Over band (HHV |osc|, 10)
+        cdf["under"] = -cdf["over"]                                         # Under = -Over
     return {"meta": {k: raw.get(k) for k in ("underlying", "lot_size", "strike_mode")},
             "candles": cdf, "trades": raw.get("trades", []), "skips": raw.get("skips", []),
             "open_position": raw.get("open_position"), "realized_pnl": raw.get("realized_pnl"),
@@ -90,6 +92,13 @@ def build_day_figure(cdf, trades, day, show_pivots=True, setups=None):
                                                f"<br>P&L {l['pnl']:.0f}<br>{l.get('detail','')}",
                                      hoverinfo="text", showlegend=False), row=1, col=1)
 
+    if "over" in d.columns:                              # Over/Under bands (filled envelope, like the platform)
+        fig.add_trace(go.Scatter(x=d["dt"], y=d["over"], mode="lines", line=dict(width=0),
+                                 fill="tozeroy", fillcolor="rgba(38,166,154,0.20)",
+                                 name="Over", hoverinfo="skip", showlegend=False), row=2, col=1)
+        fig.add_trace(go.Scatter(x=d["dt"], y=d["under"], mode="lines", line=dict(width=0),
+                                 fill="tozeroy", fillcolor="rgba(239,83,80,0.20)",
+                                 name="Under", hoverinfo="skip", showlegend=False), row=2, col=1)
     fig.add_trace(go.Bar(x=d["dt"], y=d["osc"], marker_color=list(d["color"]),
                          name="osc", showlegend=False), row=2, col=1)
     fig.update_layout(height=760, template="plotly_white", xaxis_rangeslider_visible=False,
@@ -138,7 +147,8 @@ def main():
 
     with st.sidebar:
         st.header("Data source")
-        src = st.radio("Data source", ["Live (Groww login)", "Live paper", "Upload bundle"],
+        src = st.radio("Data source", ["Live (Groww login)", "Live paper (run here)",
+                                       "Live paper (file)", "Upload bundle"],
                        label_visibility="collapsed")
         show_pivots = st.checkbox("Show pivot lines", value=True)
 
@@ -159,7 +169,59 @@ def main():
             st.error(f"Could not read bundle: {e}")
             return
 
-    elif src == "Live paper":
+    elif src == "Live paper (run here)":
+        st.caption("Runs the paper loop INSIDE this app \u2014 each refresh does one poll "
+                   "(fetch \u2192 strategy step \u2192 update state). No separate runner, no file. "
+                   "Needs Groww reachable from wherever this app runs (a cloud host's foreign "
+                   "IP may be geo-blocked \u2014 if so, run the dashboard locally).")
+        env_tok = os.environ.get("GROWW_TOTP_TOKEN")
+        env_sec = os.environ.get("GROWW_TOTP_SECRET")
+        with st.sidebar:
+            if env_tok and env_sec:
+                st.success("Using Groww keys from the environment.")
+                tok, sec = env_tok, env_sec
+            else:
+                tok = st.text_input("Groww TOTP token", type="password")
+                sec = st.text_input("Groww TOTP secret", type="password")
+                st.caption("Tip: set GROWW_TOTP_TOKEN / GROWW_TOTP_SECRET in a local .env.")
+            live_on = st.toggle("Live polling", value=False)
+        if not live_on:
+            st.info("Enter your keys and flip **Live polling** on to start paper trading in-app. "
+                    "Each refresh = one poll; nothing is ever ordered for real.")
+            return
+        if not tok or not sec:
+            st.error("Enter both the TOTP token and secret.")
+            return
+        try:
+            import intra as strat
+        except ImportError as e:
+            st.error(f"Needs **intraday_bnf_options.py next to app.py**, plus growwapi + pyotp. Missing: {e}")
+            return
+        if "paper_broker" not in st.session_state:                 # log in once, then reuse
+            try:
+                os.environ["GROWW_TOTP_TOKEN"] = tok
+                os.environ["GROWW_TOTP_SECRET"] = sec
+                os.environ.setdefault("LIVE_BROKER", "groww")
+                with st.spinner("Logging into Groww\u2026"):
+                    st.session_state["paper_broker"] = strat.build_option_broker()
+                    st.session_state["paper_cost"] = strat.OptCost()
+                    st.session_state["paper_state"] = strat._load_state()
+            except Exception as e:
+                st.error(f"Login/broker failed: {e}\n\nIf this is a geo/IP block from a cloud host, "
+                         "run the dashboard locally (Indian IP).")
+                return
+        try:                                                       # one poll per render
+            s, day5 = strat.live_paper_step(st.session_state["paper_broker"],
+                                            st.session_state["paper_cost"],
+                                            st.session_state["paper_state"])
+            st.session_state["paper_state"] = s
+            b = load_bundle(json.dumps(strat._paper_bundle(s, day5)))
+        except Exception as e:
+            st.error(f"Poll failed: {e}")
+            return
+        auto_refresh = True                                        # drive the next poll
+
+    elif src == "Live paper (file)":
         st.caption("Watches the paper_bundle.json your live-paper runner writes (RUN_MODE='live'). "
                    "Same machine: give the file path and turn on auto-refresh. Remote: upload the file.")
         pmode = st.sidebar.radio("Paper source", ["File path", "Upload"], horizontal=True)
@@ -211,7 +273,7 @@ def main():
                 st.error("Enter both the TOTP token and secret.")
                 return
             try:
-                import intra as strat
+                import intraday_bnf_options as strat
             except ImportError as e:
                 st.error("Live mode needs **intraday_bnf_options.py next to app.py** (the strategy "
                          f"engine), plus growwapi + pyotp. Missing: {e}")
