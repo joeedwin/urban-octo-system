@@ -53,8 +53,9 @@ print("[boot] strategy file loaded", flush=True)   # if you never see this, the 
 # ==========================================
 
 # Groww TOTP flow (your "API key" = TOTP token, plus the TOTP secret):
-GROWW_TOTP_TOKEN="eyJraWQiOiJaTUtjVXciLCJhbGciOiJFUzI1NiJ9.eyJleHAiOjI1Njk3NjYzNDYsImlhdCI6MTc4MTM2NjM0NiwibmJmIjoxNzgxMzY2MzQ2LCJzdWIiOiJ7XCJ0b2tlblJlZklkXCI6XCI5MTVjNjliZS02NTliLTQ3NzQtYjliOC0xMmNmOTZlNWY4YjlcIixcInZlbmRvckludGVncmF0aW9uS2V5XCI6XCJlMzFmZjIzYjA4NmI0MDZjODg3NGIyZjZkODQ5NTMxM1wiLFwidXNlckFjY291bnRJZFwiOlwiMTg2NTEzZDMtNmY4ZC00NWJiLThkOGItMjA2YTZhODc5NDk5XCIsXCJkZXZpY2VJZFwiOlwiMTI4Y2YxYzMtMTY5OS01OWRjLTk2MDItYjhmNWE1YmIzM2UwXCIsXCJzZXNzaW9uSWRcIjpcIjU1NTM2Y2RhLThhNGUtNDU5OC04NzQxLWEyOTEwYjkyYWUxMlwiLFwiYWRkaXRpb25hbERhdGFcIjpcIno1NC9NZzltdjE2WXdmb0gvS0EwYkVSTlY3TE1vUHE1Nk9MeU8rdFZnU2xSTkczdTlLa2pWZDNoWjU1ZStNZERhWXBOVi9UOUxIRmtQejFFQisybTdRPT1cIixcInJvbGVcIjpcImF1dGgtdG90cFwiLFwic291cmNlSXBBZGRyZXNzXCI6XCI0OS4zNy4yMTguMjQ0LDEzNi4yMjYuMjQzLjE2LDE2Mi4xNTguNTUuMTAyLDM1LjI0MS4yMy4xMjNcIixcInR3b0ZhRXhwaXJ5VHNcIjoyNTY5NzY2MzQ2MzkyLFwidmVuZG9yTmFtZVwiOlwiZ3Jvd3dBcGlcIn0iLCJpc3MiOiJhcGV4LWF1dGgtcHJvZC1hcHAifQ.TH5gyWFl7VyBRNfpKghdFGUfST5hfyx0EEw1-wkf54aOAsRsSyQky6AsJCB61OI5uFY7wFNIYfTFhy-dHUI-3Q"
-GROWW_TOTP_SECRET="RYZOPWY4BVDYTKTQPN2T6DZMO27Y2IXM"
+GROWW_TOTP_TOKEN  = ""     # <-- paste your TOTP token here
+GROWW_TOTP_SECRET = ""     # <-- paste your TOTP secret here
+GROWW_API_TOKEN   = ""     # OR a single daily access token instead of the two above
 
 # Zerodha (only if LIVE_BROKER = "zerodha"):
 ZERODHA_API_KEY      = ""
@@ -65,7 +66,7 @@ ZERODHA_ACCESS_TOKEN = ""
 # WHAT TO RUN  (edit these, then just run the file -- no env vars, no command line)
 # ==========================================
 
-RUN_MODE = "live"             # "realbt" = real-data backtest | "live" = live paper | "off"
+RUN_MODE = "realbt"             # "realbt" = real-data backtest | "live" = live paper | "off"
 BACKTEST_START = "2025-01-01"   # backtest from this date (YYYY-MM-DD)
 BACKTEST_END   = "2025-03-31"   # backtest to this date (YYYY-MM-DD)
 
@@ -83,7 +84,7 @@ STRIKE_STEP = 100
 T1_MIN_PTS = 100
 ENTRY_TRIGGER_PTS = 30        # CE first-trade only: 1m must break setup high + 30
 STOP_BUFFER = 1.0
-SKIP_CANDLES = 9             # no setup before 09:40 (first 5 5-min candles)
+SKIP_CANDLES = 5              # no setup before 09:40 (first 5 5-min candles)
 SQUAREOFF = dtime(15, 20)
 
 # --- YCloseBounce setup rules (match the stored procedures) ---
@@ -732,6 +733,7 @@ def run_live_paper():
     cost = OptCost(); broker = build_option_broker()
     _log(f"PAPER intraday {UNDERLYING} on {LIVE_BROKER} (YCloseBounce, shared engine). No real orders.")
     s = _load_state()
+    _write_paper_bundle(s, None)          # create the file at once so the dashboard can read it
 
     while True:
         try:
@@ -743,6 +745,7 @@ def run_live_paper():
 
             by5 = list(idx5.groupby(idx5.index.normalize()))
             if len(by5) < 2:
+                _write_paper_bundle(s, None)
                 _time.sleep(LIVE_POLL_SECS); continue
             today, day5 = by5[-1]; _, prev5 = by5[-2]
             day1 = idx1[idx1.index.normalize() == today]
@@ -757,7 +760,8 @@ def run_live_paper():
 
             completed = day5.iloc[:-1] if len(day5) > 1 else day5  # drop the still-forming candle
             if completed.empty:
-                _save_state(s); _time.sleep(LIVE_POLL_SECS); continue
+                _save_state(s); _write_paper_bundle(s, day5)
+                _time.sleep(LIVE_POLL_SECS); continue
             run_lo = float(completed["Low"].min()); run_hi = float(completed["High"].max())
             spot = float(day1["Close"].iloc[-1]) if len(day1) else float(completed["Close"].iloc[-1])
             now_t = pd.Timestamp.now().time()
