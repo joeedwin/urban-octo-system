@@ -65,7 +65,7 @@ ZERODHA_ACCESS_TOKEN = ""
 # WHAT TO RUN  (edit these, then just run the file -- no env vars, no command line)
 # ==========================================
 
-RUN_MODE = "realbt"             # "realbt" = real-data backtest | "live" = live paper | "off"
+RUN_MODE = "live"             # "realbt" = real-data backtest | "live" = live paper | "off"
 BACKTEST_START = "2025-01-01"   # backtest from this date (YYYY-MM-DD)
 BACKTEST_END   = "2025-03-31"   # backtest to this date (YYYY-MM-DD)
 
