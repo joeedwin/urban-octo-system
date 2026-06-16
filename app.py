@@ -31,6 +31,123 @@ def floor_pivots(h, l, c):
             "R3": h + 2 * (p - l), "S3": l - 2 * (h - p)}
 
 
+# ---------- modern Material theme (dark trading console) ----------
+THEME_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#0E1116; --surface:#161B22; --surface2:#1C2230; --line:#2A3340;
+  --text:#E6EDF3; --muted:#8B98A5; --primary:#4F8CFF; --bull:#26A69A; --bear:#EF5350; --warn:#E3B341;
+}
+.stApp{background:var(--bg); color:var(--text); font-family:'Roboto',sans-serif;}
+section.main > div{padding-top:1rem;}
+h1,h2,h3,h4{font-family:'Roboto',sans-serif; font-weight:700; letter-spacing:.2px;}
+.mat-card{background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:16px 18px; margin:10px 0; box-shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.25);}
+.mat-eyebrow{font-family:'Roboto Mono',monospace; font-size:11px; letter-spacing:1.5px;
+  text-transform:uppercase; color:var(--muted); margin-bottom:8px;}
+.mat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px;}
+.mat-cell{background:var(--surface2); border-radius:10px; padding:10px 12px; border:1px solid var(--line);}
+.mat-k{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
+.mat-v{font-family:'Roboto Mono',monospace; font-size:20px; font-weight:500; margin-top:2px;}
+.mat-formula{font-family:'Roboto Mono',monospace; font-size:12px; color:var(--muted); margin-top:2px;}
+.mat-row{display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed var(--line);
+  font-family:'Roboto Mono',monospace; font-size:13px;}
+.mat-row:last-child{border-bottom:none;}
+.mat-name{color:var(--text); font-weight:500;} .mat-calc{color:var(--muted);} .mat-out{color:var(--primary);}
+.bull{color:var(--bull);} .bear{color:var(--bear);}
+.mat-chip{display:inline-block; padding:3px 10px; border-radius:999px; font-family:'Roboto Mono',monospace;
+  font-size:12px; font-weight:500; border:1px solid var(--line);}
+.chip-flat{background:#20262E; color:var(--muted);} .chip-armed{background:rgba(227,179,65,.15); color:var(--warn); border-color:var(--warn);}
+.chip-pos{background:rgba(79,140,255,.15); color:var(--primary); border-color:var(--primary);}
+</style>
+"""
+
+
+def _card(eyebrow, body):
+    return f'<div class="mat-card"><div class="mat-eyebrow">{eyebrow}</div>{body}</div>'
+
+
+def pivots_card(pdh, pdl, pdc, src):
+    p = (pdh + pdl + pdc) / 3
+    rng = pdh - pdl
+    rows = [
+        ("P",  f"(H+L+C)/3 = ({pdh:.0f}+{pdl:.0f}+{pdc:.0f})/3", p),
+        ("R1", f"2P-L = 2\u00d7{p:.1f}-{pdl:.0f}", 2 * p - pdl),
+        ("S1", f"2P-H = 2\u00d7{p:.1f}-{pdh:.0f}", 2 * p - pdh),
+        ("R2", f"P+(H-L) = {p:.1f}+{rng:.0f}", p + rng),
+        ("S2", f"P-(H-L) = {p:.1f}-{rng:.0f}", p - rng),
+        ("R3", f"H+2(P-L) = {pdh:.0f}+2\u00d7{p - pdl:.1f}", pdh + 2 * (p - pdl)),
+        ("S3", f"L-2(H-P) = {pdl:.0f}-2\u00d7{pdh - p:.1f}", pdl - 2 * (pdh - p)),
+    ]
+    body = (f'<div class="mat-formula">from yesterday ({src}): H {pdh:.0f} \u00b7 L {pdl:.0f} \u00b7 C {pdc:.0f}</div>')
+    for name, calc, out in rows:
+        body += (f'<div class="mat-row"><span class="mat-name">{name}</span>'
+                 f'<span class="mat-calc">{calc}</span><span class="mat-out">{out:.1f}</span></div>')
+    return _card("pivots \u00b7 classic floor", body)
+
+
+def oscillator_card(closes, layers, last_osc):
+    """Recompute the rainbow ribbon for the latest bar and show the breakdown."""
+    s = pd.Series([float(x) for x in closes], dtype=float)
+    ribbon = [s]
+    for _ in range(layers - 1):
+        ribbon.append(ribbon[-1].rolling(2).mean())
+    rib = pd.concat(ribbon, axis=1)
+    last = rib.iloc[-1].dropna()
+    avav = last.mean(); hi = last.max(); lo = last.min(); rng = (hi - lo) or 1e-9
+    close = s.iloc[-1]; hist = 100 * (close - avav) / rng
+    over = float(pd.Series([100 * (s.iloc[i] - rib.iloc[i].dropna().mean()) /
+                            ((rib.iloc[i].dropna().max() - rib.iloc[i].dropna().min()) or 1e-9)
+                            for i in range(max(0, len(s) - 10), len(s))]).abs().max())
+    cls = "bull" if hist > 0 else "bear"
+    body = (f'<div class="mat-grid">'
+            f'<div class="mat-cell"><div class="mat-k">close</div><div class="mat-v">{close:.1f}</div></div>'
+            f'<div class="mat-cell"><div class="mat-k">avAv (ribbon mean)</div><div class="mat-v">{avav:.1f}</div></div>'
+            f'<div class="mat-cell"><div class="mat-k">ribbon spread</div><div class="mat-v">{rng:.1f}</div>'
+            f'<div class="mat-formula">{hi:.1f} \u2212 {lo:.1f}</div></div>'
+            f'<div class="mat-cell"><div class="mat-k">hist (osc)</div><div class="mat-v {cls}">{hist:.1f}</div></div>'
+            f'<div class="mat-cell"><div class="mat-k">Over / Under</div><div class="mat-v">\u00b1{over:.1f}</div></div>'
+            f'</div>'
+            f'<div class="mat-formula" style="margin-top:8px;">'
+            f'ribbon = Close + {layers - 1} recursive 2-SMA lines \u00b7 '
+            f'hist = 100\u00d7(Close\u2212avAv)/(max\u2212min) \u00b7 Over = max|hist| over 10 bars</div>')
+    return _card("rainbow oscillator", body)
+
+
+def rules_card(cfg):
+    et = cfg.get("entry_trigger_pts", 30); bb = cfg.get("bounce_band", 150)
+    tw = cfg.get("trigger_window_min", 10); otm = cfg.get("otm_points", 500)
+    lce, lpe = cfg.get("lunch_ce", ["11:30", "12:30"]), cfg.get("lunch_pe", ["11:00", "12:30"])
+    body = (f'<div class="mat-row"><span class="mat-name bull">CE</span>'
+            f'<span class="mat-calc">green 5m + osc&gt;0, \u226509:40, not lunch {lce[0][:5]}\u2013{lce[1][:5]} \u00b7 '
+            f'1m high \u2265 setup high +{et} within {tw}m \u00b7 near PDL +{bb}</span></div>'
+            f'<div class="mat-row"><span class="mat-name bear">PE</span>'
+            f'<span class="mat-calc">red 5m + osc&lt;0, \u226509:40, not lunch {lpe[0][:5]}\u2013{lpe[1][:5]} \u00b7 '
+            f'1m red break below setup low within {tw}m \u00b7 near PDH \u2212{bb}</span></div>'
+            f'<div class="mat-row"><span class="mat-name">strike</span>'
+            f'<span class="mat-calc">{otm} OTM, rounded to 100</span></div>')
+    return _card("setup \u00b7 trigger \u00b7 strike rules", body)
+
+
+def sizing_card(entry, cfg):
+    prem = entry.get("prem", 0); stop = entry.get("stop", 0); lots = entry.get("lots", 0)
+    risk = cfg.get("risk", 3000); lot = cfg.get("lot_size", 30); mx = cfg.get("max_lots", 10)
+    mbf = cfg.get("min_buffer_frac", 0.15)
+    buf = max(prem - stop + 1.0, mbf * max(prem, 1e-9))
+    per_lot = buf * lot
+    raw = int(risk / per_lot) if per_lot else 0
+    body = (f'<div class="mat-row"><span class="mat-name">buffer</span>'
+            f'<span class="mat-calc">max(entry\u2212stop+1, {int(mbf*100)}%\u00d7entry) = '
+            f'max({prem:.1f}\u2212{stop:.1f}+1, {mbf*prem:.1f})</span><span class="mat-out">{buf:.1f}</span></div>'
+            f'<div class="mat-row"><span class="mat-name">risk / lot</span>'
+            f'<span class="mat-calc">buffer \u00d7 lot = {buf:.1f} \u00d7 {lot}</span><span class="mat-out">\u20b9{per_lot:.0f}</span></div>'
+            f'<div class="mat-row"><span class="mat-name">lots</span>'
+            f'<span class="mat-calc">min(\u230a{risk:.0f}/{per_lot:.0f}\u230b, {mx}) = min({raw}, {mx})</span>'
+            f'<span class="mat-out">{lots}</span></div>')
+    return _card("position sizing", body)
+
+
 def load_bundle(raw):
     """raw: dict (already parsed) or JSON string/bytes."""
     if isinstance(raw, (str, bytes, bytearray)):
@@ -46,7 +163,7 @@ def load_bundle(raw):
             "candles": cdf, "trades": raw.get("trades", []), "skips": raw.get("skips", []),
             "open_position": raw.get("open_position"), "realized_pnl": raw.get("realized_pnl"),
             "last_decision": raw.get("last_decision"), "decisions": raw.get("decisions", []),
-            "updated": raw.get("updated")}
+            "config": raw.get("config", {}), "updated": raw.get("updated")}
 
 
 def day_pivots(cdf, day):
@@ -155,6 +272,7 @@ def build_g(token, secret):
 def main():
     import streamlit as st
     st.set_page_config(page_title="Bank Nifty Strategy Dashboard", layout="wide")
+    st.markdown(THEME_CSS, unsafe_allow_html=True)
     st.title("Bank Nifty \u2014 Strategy Dashboard")
 
     with st.sidebar:
@@ -350,6 +468,26 @@ def main():
             st.info(f"**IN POSITION {ps['opt']} {ps['strike']} \u00d7{ps['lots']}** \u2014 "
                     f"prem now {ps['prem_now']} vs stop {ps['stop_prem']}, T1 {ps['t1']}"
                     + ("  (half booked)" if ps.get("half") else ""))
+
+        st.markdown("#### Calculations")                          # Material cards: how everything is computed
+        cfg = b.get("config", {})
+        cards = []
+        if lv.get("PDH") is not None:
+            cards.append(pivots_card(lv["PDH"], lv["PDL"], lv["PDC"], lv.get("src", "?")))
+        cdf_all = b["candles"]
+        if cdf_all is not None and not cdf_all.empty:
+            try:
+                cards.append(oscillator_card(cdf_all["Close"].tolist(),
+                                             int(cfg.get("osc_layers", 10)), cc.get("osc")))
+            except Exception:
+                pass
+        if cfg:
+            cards.append(rules_card(cfg))
+        if "entry" in ck:
+            cards.append(sizing_card(ck["entry"], cfg))
+        cols = st.columns(2)
+        for k, html in enumerate(cards):
+            cols[k % 2].markdown(html, unsafe_allow_html=True)
 
     decs = b.get("decisions", [])                                 # decision log (live AND backtest)
     if decs:
