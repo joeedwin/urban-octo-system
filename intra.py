@@ -128,7 +128,7 @@ OSC_LAYERS = 10
 OSC_LOOKBACK = 10
 
 # Live
-LIVE_BROKER = os.environ.get("LIVE_BROKER", "zerodha")    # "zerodha" | "groww"
+LIVE_BROKER = os.environ.get("LIVE_BROKER", "groww")    # "zerodha" | "groww"
 UNDERLYING = "BANKNIFTY"
 INDEX_KITE_SYMBOL = "NIFTY BANK"                          # Kite NSE index tradingsymbol
 INDEX_KITE_EXCHANGE = "NSE"
@@ -208,6 +208,16 @@ def _prev_levels(broker, prev5):
         return float(pdo[0]), float(pdo[1]), float(pdo[2]), "daily"
     return (float(prev5["High"].max()), float(prev5["Low"].min()),
             float(prev5["Close"].iloc[-1]), "intraday")
+
+
+def config_dict():
+    """Strategy parameters, surfaced so the UI can show the real numbers in each formula."""
+    return {"underlying": UNDERLYING, "risk": RISK_PER_TRADE, "lot_size": LOT_SIZE,
+            "otm_points": OTM_POINTS, "entry_trigger_pts": ENTRY_TRIGGER_PTS,
+            "bounce_band": BOUNCE_BAND, "trigger_window_min": TRIGGER_WINDOW_MIN,
+            "max_lots": MAX_LOTS, "min_buffer_frac": MIN_BUFFER_FRAC, "osc_layers": OSC_LAYERS,
+            "lunch_ce": [str(LUNCH_CE[0]), str(LUNCH_CE[1])],
+            "lunch_pe": [str(LUNCH_PE[0]), str(LUNCH_PE[1])]}
 
 
 def pick_t1(entry_spot, opt, pivots):
@@ -773,7 +783,7 @@ def _paper_bundle(s, candles5):
             "trades": trades, "skips": [], "candles": candles,
             "open_position": s.get("pos"), "realized_pnl": round(sum(t["pnl"] for t in trades), 2),
             "last_decision": s.get("last_decision"), "decisions": s.get("decisions", []),
-            "updated": str(pd.Timestamp.now())}
+            "config": config_dict(), "updated": str(pd.Timestamp.now())}
 
 
 def _write_paper_bundle(s, candles5, path=None):
@@ -1417,7 +1427,8 @@ def bundle_dict():
             "trades": [_trade_to_dict(t) for t in LAST_RUN.get("trades", [])],
             "skips": LAST_RUN.get("skips", []), "candles": candles,
             "decisions": LAST_RUN.get("decisions", []),
-            "last_decision": (LAST_RUN.get("decisions") or [None])[-1]}
+            "last_decision": (LAST_RUN.get("decisions") or [None])[-1],
+            "config": config_dict()}
 
 
 def export_bundle(path="bundle.json"):
