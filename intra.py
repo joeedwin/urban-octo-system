@@ -1226,19 +1226,23 @@ def backtest_real_groww(start, end, cost=None, g=None):
     Pass an authenticated `g` (GrowwAPI) to reuse an existing login (e.g. from the dashboard)."""
     print("[backtest] logging in to Groww...", flush=True)
     _SKIPS.clear(); _BT_DECISIONS.clear(); g = g or _groww_login(); cost = cost or OptCost()
-    print(f"[backtest] fetching {UNDERLYING} 5-min index {start} -> {end} ...", flush=True)
-    idx5 = _g_candles(g, INDEX_GROWW_SYMBOL, g.SEGMENT_CASH, start, end, "5m")
+    user_start = pd.Timestamp(start).normalize()
+    pad_days = int(os.environ.get("BT_PAD_DAYS", 7))           # extra calendar days before start
+    fetch_start = (user_start - pd.Timedelta(days=pad_days)).strftime("%Y-%m-%d")
+    print(f"[backtest] fetching {UNDERLYING} 5-min index {fetch_start} -> {end} "
+          f"(auto-pad {pad_days}d before {start} for levels + oscillator warm-up) ...", flush=True)
+    idx5 = _g_candles(g, INDEX_GROWW_SYMBOL, g.SEGMENT_CASH, fetch_start, end, "5m")
     if idx5.empty:
         print("No 5-min index data (check INDEX_GROWW_SYMBOL / dates)."); return []
     print(f"[backtest] fetching {UNDERLYING} 1-min index (for triggers) ...", flush=True)
-    idx1 = _g_candles(g, INDEX_GROWW_SYMBOL, g.SEGMENT_CASH, start, end, "1m")
+    idx1 = _g_candles(g, INDEX_GROWW_SYMBOL, g.SEGMENT_CASH, start, end, "1m")  # only the chosen range
     if idx1.empty:
         print("No 1-min index data (triggers need 1-min). If Groww errors on the "
               "range, lower GROWW_1MIN_MAX_DAYS."); return []
     print(f"[backtest] {len(idx5)} 5m bars, {len(idx1)} 1m bars, "
           f"{idx5.index.normalize().nunique()} sessions", flush=True)
     idx5["osc"] = widner_oscillator(idx5["Close"])
-    LAST_RUN["candles"] = idx5
+    LAST_RUN["candles"] = idx5[idx5.index.normalize() >= user_start]   # display chosen range; osc already warmed
     idx5["date"] = idx5.index.normalize()
     idx1["date"] = idx1.index.normalize()
     five_by_day = dict(list(idx5.groupby("date")))
@@ -1256,6 +1260,8 @@ def backtest_real_groww(start, end, cost=None, g=None):
 
     for di in range(1, len(days)):
         date = days[di]; prev = five_by_day[days[di - 1]]
+        if date < user_start:                                  # pad day: prior/warm-up only, never traded
+            continue
         day5 = five_by_day[date]; day1 = one_by_day.get(date)
         if day1 is None or day1.empty:
             continue
